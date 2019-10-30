@@ -1,0 +1,30 @@
+require(ggplot2)
+require(ggsci)
+require(RColorBrewer)
+
+my_theme <- theme(legend.position = "bottom"
+                  , line = element_line(size=0.5)
+                  , legend.title   = element_text(color="black",size=8)#rel(1.5)
+                  , legend.text    = element_text(color="black",size=8)
+                  , axis.title     = element_text(color="black",size=8)
+                  , axis.text      = element_text(color="black",size=8)
+                  , axis.line      = element_line(size=0.25)
+                  , panel.grid.major = element_line(size=0.25)
+                  , panel.grid.minor = element_blank()
+                  , strip.text       = element_text(size=8)
+                  , strip.background = element_rect(fill = NA))
+
+blank_theme <- theme_minimal()+
+  theme(
+    axis.title.x = element_blank()
+    , axis.title.y = element_blank()
+    , panel.border = element_blank()
+    , panel.grid=element_blank()
+    , axis.ticks = element_blank()
+    , plot.title=element_text(size=8, face="bold")
+    , line = element_line(size=0.5)
+    , axis.title     = element_text(color="black",size=8)
+    , axis.text      = element_text(color="black",size=8)
+    , legend.title   = element_text(color="black",size=8)#rel(1.5)
+    , legend.text    = element_text(color="black",size=8)
+  )
