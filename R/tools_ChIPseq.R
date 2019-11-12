@@ -197,6 +197,10 @@ analyze_profile <- function(mat, method = 'mean', distance = 3000)
     {
       if(method=='mean') {
         return(mean(..., na.rm=T))
+      } else if(method=='sum') {
+        return(sum(..., na.rm = T))
+      } else if(method=='median') {
+        return(median(..., na.rm=T))
       } else if (is.null(method)) {
         stop(message("[!] Please, provide profile summary method."))
       }
@@ -266,11 +270,15 @@ analyze_profile_v2 <- function(mat, method = 'mean', distance = 3000, pal = NULL
     {
       if(method=='mean') {
         return(mean(..., na.rm=T))
+      } else if(method=='sum') {
+        return(sum(..., na.rm = T))
+      } else if(method=='median') {
+        return(median(..., na.rm=T))
       } else if (is.null(method)) {
         stop(message("[!] Please, provide profile summary method."))
       }
     }
-
+    
     cn  <- colnames(mat)
     bid <- grep("bin", cn)
 

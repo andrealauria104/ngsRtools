@@ -1,11 +1,11 @@
 # Tools for BS-seq data analysis
 
-# Load external re#sources and libraries
+# Load external resources and libraries
 #source("tools_sequence_analysis.R")
 require(genomation)
 require(xlsx)
 require(methylKit)
-# Load and prepare data ====
+# Load and save data ====
 read_bsmap     <- function(bsmap_files
                            , context  = "CpG"
                            , assembly = "mm9"
@@ -96,67 +96,6 @@ write_to_bed <- function(mtr
   options(scipen=0) # restore default
 }
 
-get_names <- function(x, y)
-{
-  y <- as.data.frame(y)
-  x$idx <- gsub(" ","",apply(x[,c(1:4)],1, paste0, collapse="_"))
-  y$idx <- gsub(" ","",apply(y[,c(1:3,5)],1, paste0, collapse="_"))
-  name_id <- grep('gene.*name|^name', colnames(y))
-  x$names <- y[match(x$idx,y$idx),name_id]
-  x$idx <- NULL
-  return(x)
-}
-
-get_region_methylation <- function(mtr, region, ...)
-{
-  cregion <- regionCounts(mtr, region, strand.aware = F, ...)
-  tmp <- getData(cregion)
-  tmp <- get_names(tmp, region)
-
-  idx <- which(duplicated(tmp$names))
-  if(length(idx)>0) {
-    tmp <- tmp[-idx,]
-    mratio <- percMethylation(cregion[-idx], rowids = T)
-  } else {
-    mratio <- percMethylation(cregion, rowids = T)
-  }
-
-  if(length(tmp$names)>0) rownames(mratio) <- tmp$names
-
-  return(mratio)
-}
-
-get_average_methylation <- function(mratio)
-{
-
-  if(grepl('methyl', class(mratio))) {
-    mratio <- percMethylation(mratio, rowids = T)
-  }
-
-  idx <- unique(colnames(mratio))
-  mratio <- lapply(idx, function(x)
-  {
-    i <- grep(x, colnames(mratio))
-    rowMeans(mratio[,i], na.rm = T)
-  }
-  )
-  names(mratio) <- idx
-  mratio <- do.call(cbind, mratio)
-  return(mratio)
-}
-
-get_average_coverage <- function(mtr)
-{
-  mtr <- getData(mtr)
-  mtr$position <- gsub(" ","", apply(mtr[,1:3], 1, paste0, collapse = '.'))
-  i <- grep('coverage', colnames(mtr))
-  cv <- rowMeans(mtr[,i], na.rm = T)
-
-  mtr$average_cv <- cv
-
-  return(mtr[,c('position','average_cv')])
-}
-
 create_begraph <- function(mtr.ratio, outfile, samp)
 {
   message("[+] Creating bedgraph")
@@ -209,6 +148,69 @@ save_bedgraph <- function(mC, outbg)
   }
 }
 
+# Process DNA methylation levels ====
+get_names <- function(x, y)
+{
+  y <- as.data.frame(y)
+  x$idx <- gsub(" ","",apply(x[,c(1:4)],1, paste0, collapse="_"))
+  y$idx <- gsub(" ","",apply(y[,c(1:3,5)],1, paste0, collapse="_"))
+  name_id <- grep('gene.*name|^name', colnames(y))
+  x$names <- y[match(x$idx,y$idx),name_id]
+  x$idx <- NULL
+  return(x)
+}
+
+get_region_methylation <- function(mtr, region, ...)
+{
+  cregion <- regionCounts(mtr, region, strand.aware = F, ...)
+  tmp <- getData(cregion)
+  tmp <- get_names(tmp, region)
+  
+  idx <- which(duplicated(tmp$names))
+  if(length(idx)>0) {
+    tmp <- tmp[-idx,]
+    mratio <- percMethylation(cregion[-idx], rowids = T)
+  } else {
+    mratio <- percMethylation(cregion, rowids = T)
+  }
+  
+  if(length(tmp$names)>0) rownames(mratio) <- tmp$names
+  
+  return(mratio)
+}
+
+get_average_methylation <- function(mratio)
+{
+  
+  if(grepl('methyl', class(mratio))) {
+    mratio <- percMethylation(mratio, rowids = T)
+  }
+  
+  idx <- unique(colnames(mratio))
+  idx <- unique(gsub("_rep_+\\d+","",idx))
+  mratio <- lapply(idx, function(x)
+  {
+    i <- grep(x, colnames(mratio))
+    rowMeans(mratio[,i], na.rm = T)
+  }
+  )
+  names(mratio) <- idx
+  mratio <- do.call(cbind, mratio)
+  return(mratio)
+}
+
+get_average_coverage <- function(mtr)
+{
+  mtr <- getData(mtr)
+  mtr$position <- gsub(" ","", apply(mtr[,1:3], 1, paste0, collapse = '.'))
+  i <- grep('coverage', colnames(mtr))
+  cv <- rowMeans(mtr[,i], na.rm = T)
+  
+  mtr$average_cv <- cv
+  
+  return(mtr[,c('position','average_cv')])
+}
+
 get_qmtr_ratio <- function(mtr.ratio)
 {
   apply(mtr.ratio, 2, function(x) {
@@ -229,28 +231,214 @@ get_qmtr_ratio <- function(mtr.ratio)
     return(n)
   } )
 }
-plot_qmtr_ratio <- function(q.mtr.ratio)
+
+plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
 {
   #source("theme_setting.R")
   qm <- reshape2::melt(q.mtr.ratio, varnames = c('methylation','sample'))
   nm <- rev(levels(qm$methylation))
   qm$methylation <- factor(qm$methylation, levels = nm)
   qm$sample <- factor(qm$sample)
-  # levels(qm$sample) <-  c('r_D12_2i-LIF','r_D7_2i-LIF'
-  #                                 ,'S3 -/-_2i-LIF', 'S3 +/+_2i-LIF','S3 +/+_serum-LIF'
-  #                                 ,'S3 +/+_2i')
-
+  
+  if(!is.null(fann) & is.character(fann)) {
+    qm$sample <- factor(qm$sample, levels =  names(fann))
+    qm$fann <- fann[qm$sample]
+  }
+  
+  nref <- max(apply(q.mtr.ratio, 2, function(i) max(cumsum(i))))
+  om   <- floor(log10(nref))
+  br <- c(0, floor(nref/10**om)*10**om/2, floor(nref/10**om)*10**om)
+  
   pal <- rev(RColorBrewer::brewer.pal(5, 'Reds'))
   bars <- ggplot(qm, aes(x=sample, y=value, fill=methylation)) +
-    geom_bar(width = 0.8, stat = "identity", col = 'black') +
+    geom_bar(width = 0.8, stat = "identity", col = 'black', size = 0.25) +
     scale_fill_manual(values = pal) + my_theme + theme_bw() +
-    ylab('Number of CpG') + xlab(NULL)
-
+    scale_y_continuous(labels = br/10**om, breaks = br) + 
+    ylab(bquote(CG~count~"("~x~10^.(om)~")")) + xlab(NULL) + 
+    theme(strip.background = element_blank()
+          , strip.text = element_text(size = 8)
+          , text = element_text(size = 8)
+          , plot.title = element_text(size = 8, hjust = 0.5, face = "bold")
+          , plot.background = element_rect(size = 0.25)
+          , panel.background = element_rect(size = 0.25)
+          , panel.border = element_rect(size=0.25)
+          , panel.grid = element_line(size = 0.25)
+          , axis.ticks = element_line(size = 0.25))
+  
+  if(!is.null(fann) & is.character(fann)) {
+    bars <- bars + facet_grid(~fann, scales = 'free_x') 
+  }
+  
   return(bars)
 }
 
+plot_methratio_v2 <- function(mtr
+                              , type='boxplot' # violin, bar, density, histogram
+                              , pal = NULL
+                              , precedence = NULL
+                              , time.pos.id = NULL
+                              , cond.pos.id = NULL
+                              , sample.precedence = NULL)
+{
+  require(plyr)
+  
+  if(grepl('methyl', class(mtr))) {
+    mtratio  <- methylKit::percMethylation(mtr, rowids = T)
+    if(sum(table(colnames(mtr.ratio)))!=ncol(mtr.ratio)) mtratio <- get_average_methylation(mtratio)
+  } else {
+    mtratio  <- mtr
+  }
+  rm(mtr)
+  
+  mtratio <- reshape2::melt(mtratio, varnames = c('position','sample'), value.name = 'methratio')
+  colnames(mtratio)[1] <- 'position'
+  
+  if(any(grepl("L1", colnames(mtratio))) & !is.null(precedence)) {
+    mtratio$L1 <- factor(mtratio$L1, levels = precedence) 
+  }
+  if(!is.null(time.pos.id)) {
+    mtratio$time <- sapply(strsplit(as.character(mtratio$sample), "\\_"), "[[", time.pos.id) 
+    if(!is.null(precedence)) {
+      tryCatch({mtratio$time <- factor(mtratio$time, levels = precedence)}
+               , error = function(e) message("[!] Invalid precedence!"))
+    }
+  } else {
+    mtratio$time <- mtratio$sample
+  }
+  
+  if(!is.null(cond.pos.id)) {
+    mtratio$condition <- sapply(strsplit(as.character(mtratio$sample), "\\_"), "[[", cond.pos.id) 
+  } else {
+    mtratio$condition <- mtratio$sample
+  }
+  
+  
+  if(any(grepl("_rep_+\\d+|_replicate_", unique(mtratio$sample))) & !(type%in%c("density","histogram"))){
+    
+    mtratio$tmp <- mtratio$condition
+    mtratio$condition <- mtratio$sample
+    mtratio$sample <- mtratio$tmp
+    mtratio$sample <- gsub("_rep_+\\d+|_replicate_","",mtratio$sample)
+    mtratio$tmp <- NULL
+    mtratio$condition <- gsub("_","-",mtratio$condition)
+     
+  } else {
+    stop(message("[!] Please provide average values for density/histogram plots with replicates."))
+  }
+  
+  if(!is.null(sample.precedence)) {
+    if(length(sample.precedence)==length(unique(mtratio$condition))) {
+      mtratio$condition <- factor(mtratio$condition, levels = gsub("_","-",sample.precedence))
+    } 
+  }
+  
+  mtratio$sample <- gsub("_","-",mtratio$sample)
+  
+  if(type=='boxplot') {
+    p <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) +  
+      geom_boxplot(notch = T, outlier.shape = NA, width=0.6) + theme_bw() + my_theme + 
+      theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)) + ylim(c(0,100)) +
+      guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
+      scale_fill_manual(values = pal) + ylab("% CG methylation") 
+    
+  } else if(type=='violin') {
+    if(any(grepl("L1", colnames(mtratio)))) {
+      facet_formula <- paste0("L1~time")
+      p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) + facet_grid(as.formula(facet_formula))
+    } else if(!is.null(time.pos.id)){
+      facet_formula <- "~time"
+      p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) + facet_grid(as.formula(facet_formula))
+    } else {
+      p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample))
+    }
+    dodge <- position_dodge(width = 0.8)
+    p <- p0 +
+      geom_violin(trim = T, position = dodge, lwd = 0.25, alpha = 0.7) + 
+      geom_boxplot(width=0.08, outlier.color = NA, position = dodge, lwd = 0.25, show.legend = F, alpha = 0.7) + 
+      stat_summary(fun.y=median, geom="point", size=0.5, color="black", position = dodge) +
+      theme_classic() + my_theme +
+      theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)
+            , panel.grid = element_blank()
+            , strip.background.y = element_blank()
+            , strip.background.x = element_rect(size=0.25)) + guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
+      scale_fill_manual(values = pal) + ylab("% CG methylation")  + scale_y_continuous(breaks = c(0,50,100), limits = c(0,100))  
+  }else if(type=='density'){
+    if(any(grepl("L1", colnames(mtratio)))) {
+      facet_formula <- paste0("L1~time")
+    } else {
+      facet_formula <- "~time"
+    }
+    dodge <- position_dodge(width = 0.8)
+    p <- ggplot(mtratio, aes(x=methratio, fill=sample)) + facet_grid(as.formula(facet_formula), scales = 'free_y') +
+      geom_density(lwd = 0.25, alpha = 0.6) +
+      theme_classic() + my_theme +
+      theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)
+            , panel.grid = element_blank()
+            , strip.background.y = element_blank()
+            , strip.background.x = element_rect(size=0.25)
+            # , axis.title.y = element_blank()
+            , axis.text.y = element_blank()) + guides(fill = guide_legend(nrow=2)) +
+      scale_fill_manual(values = pal) + xlab("% CG methylation") 
+    # scale_x_continuous(breaks = c(0,50,100), limits = c(0,100))  
+  }else if(type=='histogram') {
+    if(any(grepl("L1", colnames(mtratio)))) {
+      facet_formula <- paste0("L1~time")
+    } else {
+      facet_formula <- "~time"
+    }
+    dodge <- position_dodge(width = 0.8)
+    p <- ggplot(mtratio, aes(x=methratio, fill=sample)) + facet_grid(as.formula(facet_formula), scales = 'free_y') +
+      geom_histogram(lwd = 0.25, alpha = 0.6, binwidth = 10, col = 'black') +
+      theme_classic() + my_theme +
+      theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)
+            , panel.grid = element_blank()
+            , strip.background.y = element_blank()
+            , strip.background.x = element_rect(size=0.25)
+            # , axis.title.y = element_blank()
+            # , axis.text.y = element_blank()
+      ) + guides(fill = guide_legend(nrow=2)) +
+      scale_fill_manual(values = pal) + xlab("% CG methylation") + ylab("CG count")
+  }else if(type=="summary"){
+    mtratio.sm <- ddply(mtratio, .(time, condition, sample)
+                        , summarize
+                        , mean = mean(methratio)
+                        , median = median(methratio)
+                        , min = min(methratio)
+                        , max = max(methratio)
+                        , sd  = sd(methratio)
+                        , l = length(methratio)
+                        , se = sd(methratio)/sqrt(length(methratio))
+                        , se.md = 1.253*sd(methratio)/sqrt(length(methratio))
+    )
+    
+    p <- ggplot(mtratio.sm, aes(x=time, y=median, fill=sample)) +  
+      geom_col(position = 'dodge', size = 0.1, col = 'black', width = 0.6) + 
+      geom_errorbar(
+        # aes(ymin=mean-se, ymax=mean+se),
+        aes(ymin=median-se.md, ymax=median+se.md)
+        , size=.25
+        , width=.2
+        , position=position_dodge(.6)) + 
+      theme_bw() + my_theme + 
+      theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)) +
+      scale_fill_manual(values = pal) + ylab("% of methylation")  + ylim(c(0,100))
+    
+    
+  } else {
+    stop(message("[!] Invalid plot type. Please, provide one of # violin, bar, density, histogram"))
+  }
+  
+  return(p)
+  
+}
 # Principal Component Analysis ====
-get_meth_pca   <- function(meth){
+get_meth_pca   <- function(meth
+                           , pal = NULL
+                           , labels = T
+                           , scree_plot = F
+                           , max.pcs = NULL
+                           , scree_plot_type = "explained_variance"
+                           , point_size = 2){
 
   #source("theme_setting.R")
 
@@ -264,21 +452,75 @@ get_meth_pca   <- function(meth){
                      filterByQuantile = T,
                      sd.threshold=0.5,
                      obj.return = T)
+  if((is.null(max.pcs) || max.pcs > ncol(RNA_pca$x))) {
+    max.pcs <- ncol(pca$x)
+  }
+  
   eigs <- pca$sdev^2
   pca_var  <- rapply(as.list(eigs), function(x) sum(x/sum(eigs)))
   pca_plot <- as.data.frame(pca$x[,c("PC1", "PC2", "PC3", "PC4")])
-  pca_plot$sample <- gsub("_R+\\d|\\.+\\d+$","",rownames(pca_plot))
-  pal <- function(x) (viridis::viridis(x))
-  ggplot(pca_plot, aes(x=PC1, y=PC2, col=sample)) + geom_point(size=3) +
+  pca_plot$sample <- gsub("_R+\\d|\\.+\\d+$|_rep_+\\d+","",rownames(pca_plot))
+  pca_plot$sample <- gsub("_"," ",pca_plot$sample)
+  pca_summary <- summary(pca)$importance
+  
+  if(is.null(pal)) {
+    pal <- ggsci::pal_npg()
+    pal <- pal(length(unique(pca_plot$sample)))
+  }
+  
+  p <- ggplot(pca_plot, aes(x=PC1, y=PC2, col=sample)) + geom_point(size=point_size) +
     xlab(paste0("PC1 (",round(pca_var[1]*100,1),"%)")) +
     ylab(paste0("PC2 (",round(pca_var[2]*100,1),"%)")) +
     theme_bw() + my_theme + ggtitle("CpG Methylation PCA") +
-    theme(panel.grid.minor = element_blank(), plot.title = element_text(face="bold", hjust = 0.5),aspect.ratio = 1) +
-    scale_color_manual(values=pal(length(unique(pca_plot$sample)))) +
-    geom_label_repel(aes(label = pca_plot$sample),
-                     fontface = 'bold', color = 'black', size=3,
-                     box.padding = 0.35, point.padding = 0.5,
-                     segment.color = 'grey50')
+    theme(panel.grid.minor = element_blank()
+          , plot.title = element_text(face="bold", hjust = 0.5, size=10)
+          , aspect.ratio = 1) +
+    scale_color_manual(values=pal) 
+  
+  if(labels) {
+    rownames(pca_plot) <- gsub("_"," ",rownames(pca_plot))
+    rownames(pca_plot) <- gsub(" rep "," - rep",rownames(pca_plot))
+    p <- p + geom_label_repel(aes(label = rownames(pca_plot), col=sample),
+                              fontface = 'bold'
+                              , show.legend = F
+                              # , color = 'black'
+                              , size=2,
+                              box.padding = 0.35, point.padding = 0.5,
+                              segment.color = 'grey50') 
+  }
+  
+  if(scree_plot) {
+    
+    if(scree_plot_type=='explained_variance') {
+      spdata      <- reshape2::melt(pca_summary[c(2:3),])
+      spdata$Var2 <- as.numeric(gsub("PC", "",spdata$Var2))
+      spdata      <- spdata[spdata$Var2<=max.pcs,]
+      sp <- ggplot(spdata, aes(x=Var2, y=value, group=Var1, col=Var1)) + geom_point(size=1) + geom_line() +
+        theme_bw() + my_theme + scale_x_continuous(breaks = spdata$Var2) + 
+        geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
+        xlab("Principal Component") + ylab("Explained Variance") + ggtitle("PCA - Scree Plot") + 
+        theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank()) +
+        scale_y_continuous(breaks = seq(0,1,0.1),labels = scales::percent, limits = c(0,1)) + scale_color_manual(values=c("black","grey"))
+    } else if(scree_plot_type=='standard_deviation') {
+      spdata      <- reshape2::melt(pca_summary[1,])
+      
+      spdata$Var2 <- as.numeric(gsub("PC", "",rownames(spdata)))
+      spdata      <- spdata[spdata$Var2<=max.pcs,]  
+      
+      sp <- ggplot(spdata, aes(x=Var2, y=value), col='black') + geom_point(size=1) + geom_line() +
+        theme_bw() + my_theme + scale_x_continuous(breaks = spdata$Var2) + 
+        geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
+        xlab("Principal Component") + ylab("Standard Deviation") + ggtitle("PCA - Scree Plot") + 
+        theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank())
+      
+    }
+    
+    
+    
+    return(list("pca" = p, "screeplot" = sp))
+  } else {
+    return(p) 
+  }
 }
 
 # Correlation analysis ----
