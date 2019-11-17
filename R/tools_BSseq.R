@@ -431,6 +431,55 @@ plot_methratio_v2 <- function(mtr
   return(p)
   
 }
+
+intersect_mtr <- function(mtr_x, mtr_y
+                          , return.obj = "GRanges"
+                          , return.merged = F)
+{
+  require(GenomicRanges)
+  
+  convert_input <- function(mtr)
+  {
+    if(grepl('methyl', class(mtr))) {
+      mtrranges <- as(mtr,"GRanges")
+    } else if(grepl('data.frame', class(mtr))) {
+      mtrranges <- makeGRangesFromDataFrame(mtr)
+    } else if(grepl('GRanges', class(mtr))) {
+      mtrranges <- mtr
+    }
+    return(mtrranges)
+  }
+  mtr_x <- convert_input(mtr_x)
+  mtr_y <- convert_input(mtr_y)
+  
+  ov <- findOverlaps(mtr_x, mtr_y, ignore.strand=T, type = 'any')
+  x <- mtr_x[queryHits(ov),]
+  y <- mtr_y[subjectHits(ov),]
+  
+  if(return.merged) {
+    colnames(x@elementMetadata) <- paste0(colnames(x@elementMetadata),"_x")
+    colnames(y@elementMetadata) <- paste0(colnames(y@elementMetadata),"_y")
+    x@elementMetadata <- cbind.DataFrame(x@elementMetadata, y@elementMetadata)
+    m <- x
+    rm(x,y)
+    if(return.obj == "GRanges") {
+      return(m)
+    } else if(return.obj == "data.frame") {
+      return(as.data.frame(m))
+    } else {
+      stop(message("[!] Invalid return object (GRanges/data.frame)."))
+    }
+  } else {
+    if(return.obj == "GRanges") {
+      return(list("mtr_x"=x,"mtr_y"=y))
+    } else if(return.obj == "data.frame") {
+      return(list("mtr_x"=as.data.frame(x),"mtr_y"=as.data.frame(y)))
+    } else {
+      stop(message("[!] Invalid return object (GRanges/data.frame)."))
+    }
+  }
+}
+
 # Principal Component Analysis ====
 get_meth_pca   <- function(meth
                            , pal = NULL
@@ -554,19 +603,27 @@ plot_pairwise_correlation <- function(x
   return(draw(cHM, heatmap_legend_side = "bottom"))
 }
 
-analyze_pairwise_methyl_correlation <- function(mratio, xvar, yvar, ptitle=NULL)
+analyze_pairwise_methyl_correlation <- function(mratio, xvar, yvar
+                                                , ptitle         = NULL
+                                                , pal            = "RdYlBu"
+                                                , plot.type      = "density"
+                                                , density.limits = c(0,0.001)
+                                                , density.na.value = "red")
 {
   #source("theme_setting.R")
   cor.test.res <- cor.test(x = mratio[,xvar], y = mratio[,yvar])
-  p <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
-    stat_density_2d(aes(fill = ..density..), geom = "raster", contour = FALSE) +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(expand = c(0, 0)) +
-    scale_fill_distiller(palette="RdYlBu", direction=-1, limits=c(0,0.002), na.value = "red") +
-    # scale_fill_brewer(palette = "RdBu")+
-    # scale_fill_gradientn(colours = rev(RColorBrewer::brewer.pal(6,"PuOr")[c(1,3,5)])
-    #                       , guide = guide_colourbar(barheight = 0.6, title.vjust = 1 )) +
-    my_theme + ggtitle(ptitle) +
+  if(plot.type=="density") {
+    p0 <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
+      stat_density_2d(aes(fill = ..density..), geom = "raster", contour = FALSE) +
+      scale_x_continuous(expand = c(0, 0)) +
+      scale_y_continuous(expand = c(0, 0)) +
+      scale_fill_distiller(palette=pal, direction=-1, limits=density.limits, na.value = density.na.value) +
+      my_theme
+  } else if(plot.type=="scatter") {
+    p0 <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
+      geom_point(size = 1, alpha = 0.4) + theme_bw() + my_theme_2
+  }
+  p <- p0 + ggtitle(ptitle) +
     xlab(paste0("% CG methylation in ",gsub(".*_","#",xvar))) +
     ylab(paste0("% CG methylation in ",gsub(".*_","#",yvar))) +
     theme(plot.title = element_text(size = 8, hjust = 0.5)

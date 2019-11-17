@@ -396,6 +396,9 @@ calculateDiffExpr <- function(m
   
   if(is.null(group)) {
     group <- as.factor(colnames(m))
+    if(sum(table(levels(group))>1)==0) {
+      stop(message("[!] Invalid experimental groups (< 2 replicates per condition)."))
+    }
   } else {
     m <- m[,names(group)]
     if (!is.factor(group))   group <- as.factor(group)
@@ -999,6 +1002,50 @@ analyze_relative_expression <- function(genes, dea, time_0 = "T0h", facet_formul
   
   return(list("p" = p, "data" = efc))
 } 
+
+# DESeq2 ---
+calculateDiffExprDESeq2 <- function(counts
+                                    , info_analysis
+                                    , design_formula 
+                                    , tests   = NULL
+                                    , fcth    = NULL
+                                    , pvth    = NULL
+                                    , outfile = NULL) 
+{
+  require("DESeq2")
+  message("[*] Run DESeq2 for Differential Expression Analysis")
+  m           <- counts[,rownames(info_analysis)]
+  m           <- apply(m, 2, as.integer)
+  rownames(m) <- rownames(counts)
+  
+  dds <- DESeqDataSetFromMatrix(countData = m,
+                                colData   = info_analysis,
+                                design    = as.formula(design_formula))
+  dds <- DESeq(dds)
+  
+  if(!is.null(tests)) {
+    res <- list()
+    for(i in tests) {
+      if(!is.null(fcth) & !is.null(pvth)) {
+        res[[i]] <- list()
+        res[[i]]$result <- results(dds, name = i)
+        res[[i]]$sig <- subset(results(dds, name = i), abs(log2FoldChange)>=fcth & padj <= pvth)
+        res[[i]]$sig <- cbind.data.frame("genes"=rownames(res[[i]]$sig),res[[i]]$sig)
+        res[[i]]$sig <- res[[i]]$sig[order(res[[i]]$sig$padj, decreasing = F),]
+      } else {
+        res[[i]] <- results(dds, name = i)
+      }
+    }
+    if(!is.null(outfile)) {
+      saveXLSresEdgeR(lapply(res,"[[","sig"), outfile = outfile, force = T)
+    }
+    
+    return(list("dds"=dds,"res"=res))
+  } else {
+    return(dds)
+  }
+}
+
 # Surrogate Variable Analysis ====
 cleaningP <- function(y, mod, svaobj, P=ncol(mod))
 {
