@@ -1,11 +1,35 @@
 Package: ngsRtools
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Epigenomics NGS Data Analysis with R.
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Andrea Lauria
+Maintainer: The package maintainer <andrea.lauria104@gmail.com>
+Description: A Collection of Tools for Next-Generation Sequencing Data Analysis, with a focus on Epigenomics research.
+    - RNA-seq
+    - scRNA-seq
+    - ChIP-seq
+    - BS-seq
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    xlsx,
+    ggplot2,
+    ggrepel,
+    reshape2,
+    ComplexHeatmap,
+    RColorBrewer,
+    edgeR,
+    DESeq2,
+    sva,
+    cluster,
+    vegan,
+    circlize,
+    plyr,
+    ggpubr,
+    gProfileR,
+    clusterProfiler,
+    org.Mm.eg.db,
+    org.Hs.eg.db,
+    ggsci,
+    grid
+License: MIT + file LICENSE

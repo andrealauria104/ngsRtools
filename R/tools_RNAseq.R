@@ -1,5 +1,5 @@
 # Tools for RNA-seq data analysis
-library(xlsx)
+
 # Load and Prepare Data ====
 loadCounts <- function(countsDIR, pattern=NULL) {
   
@@ -41,6 +41,8 @@ loadFunc <- function(type="TPM", ...) {
   }
 }
 
+# still here for compatibility reason, 
+# will be deprecated as soon as possible
 process_rnaseq_edger <- function(m
                                  , group  = NULL
                                  , reference = NULL # Control group
@@ -51,7 +53,6 @@ process_rnaseq_edger <- function(m
                                  , tlen = NULL)
 {
   
-  require(edgeR)
   message(" -- Pre-process RNA-seq data using edgeR")
   
   if(is.null(group)) {
@@ -64,8 +65,8 @@ process_rnaseq_edger <- function(m
   
   message(" -- Condition: ", paste0(levels(group), collapse = "-"))
   
-  y <- DGEList(counts=m, genes=rownames(m), group = group)
-  y <- calcNormFactors(y)
+  y <- edgeR::DGEList(counts=m, genes=rownames(m), group = group)
+  y <- edgeR::calcNormFactors(y)
   
   # Clean environment
   rm(m)
@@ -87,6 +88,88 @@ process_rnaseq_edger <- function(m
     if(normalize.using == "cpm") {
       keep <- rowSums(edgeR::cpm(y)>filter.expr.th) >= fs  
     } else if (normalize.using == "rpkm") {
+      keep <- rowSums(edgeR::rpkm(y, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
+    } else {
+      stop(message("[!] Incorrect normalization method (cpm, rpkm)."))
+    }
+    
+    y <- y[keep, , keep.lib.sizes=FALSE]
+  }
+  
+  if(normalize.using == "cpm") {
+    y$CPM    <- edgeR::cpm(y)
+    y$logCPM <- edgeR::cpm(y, log = T)
+  } else if (normalize.using == "rpkm") {
+    if(is.null(tlen)) {
+      stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
+    }
+    y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = T)
+    y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = T, log = T)
+  }
+  
+  return(y)
+}
+
+processRNAseqEdgeR <- function(m, experimental_info = NULL
+                               , gene_info = NULL
+                               , group  = NULL
+                               , reference = NULL # Control group
+                               , filter = T
+                               , filter.expr.th = 1
+                               , filter.sample.th = 2
+                               , normalize.using = "cpm"
+                               , tlen = NULL)
+{
+  
+  message(" -- Pre-process RNA-seq data using edgeR")
+  
+  if(is.null(experimental_info)) {
+    if(is.null(group)) {
+      group <- as.factor(colnames(m))
+      if(sum(table(levels(group))>1)==0) {
+        stop(message("[!] Invalid experimental groups (< 2 replicates per condition)."))
+      }
+    } else {
+      if(!is.null(names(group)))  m <- m[,names(group)]
+      if(!is.factor(group))   group <- as.factor(group)
+      if(!is.null(reference)) group <- relevel(group, reference)
+    }
+  }
+  
+  if(is.null(gene_info)) gene_info <- rownames(m)
+  
+  y <- edgeR::DGEList(counts    = m
+                      , genes   = gene_info
+                      , samples = experimental_info
+                      , group   = group)
+  
+  message(" -- Condition: ", paste0(levels(y$samples$group), collapse = "-"))
+  
+  y <- edgeR::calcNormFactors(y)
+  
+  # Clean environment
+  rm(m)
+  gc(verbose = F)
+  
+  if(filter) {
+    message(" -- Filtering lowly expressed genes")
+    message("    -- Threshods:")
+    message("     * CPM = "     , filter.expr.th)
+    message("     * Samples = " , filter.sample.th)
+    
+    if(filter.sample.th>=1) {
+      # Number of samples
+      fs <- filter.sample.th
+    } else {
+      # Percentage of samples
+      fs <- floor(ncol(m)*filter.sample.th)
+    }
+    if(normalize.using == "cpm") {
+      keep <- rowSums(edgeR::cpm(y)>filter.expr.th) >= fs  
+    } else if (normalize.using == "rpkm") {
+      if(is.null(tlen)) {
+        stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
+      }
       keep <- rowSums(edgeR::rpkm(y, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
     } else {
       stop(message("[!] Incorrect normalization method (cpm, rpkm)."))
@@ -177,10 +260,11 @@ countToFpkm <- function(counts, effLen, pcg)
 }
 
 # Principal Component Analysis ====
-plotPCA <- function(x
-                    , labels  = T
-                    , groupBy = NULL
-                    , pal     = NULL
+plotPCA <- function(x, experimental_info = NULL
+                    , labels   = T
+                    , col_by   = NULL
+                    , shape_by = NULL
+                    , pal      = NULL
                     , scree_plot = F
                     , scree_plot_type = "explained_variance"
                     , point_size = 2
@@ -188,22 +272,6 @@ plotPCA <- function(x
                     , dim_1 = "PC1"
                     , dim_2 = "PC2"
                     , default.title = "RNA-seq PCA") {
-  
-  require(ggplot2)
-  require(ggrepel)
-  require(reshape2)
-  
-  my_theme <- theme(legend.position = "bottom"
-                  , line = element_line(size=0.5)
-                  , legend.title   = element_text(color="black",size=8)#rel(1.5)
-                  , legend.text    = element_text(color="black",size=8)
-                  , axis.title     = element_text(color="black",size=8)
-                  , axis.text      = element_text(color="black",size=8)
-                  , axis.line      = element_line(size=0.25)
-                  , panel.grid.major = element_line(size=0.25)
-                  , panel.grid.minor = element_blank()
-                  , strip.text       = element_text(size=8)
-                  , strip.background = element_rect(fill = NA))
   
   rna <- t(x)
   rna <- rna[,colSums(rna)>1]
@@ -216,22 +284,35 @@ plotPCA <- function(x
   
   pca_plot <- as.data.frame(RNA_pca$x[,paste0("PC",1:max.pcs)])
   
-  if( !is.null(groupBy) ) {
-    pca_plot$sample <- groupBy[rownames(pca_plot)]
+  if( !is.null(experimental_info) ) {
+    if(is.character(experimental_info)) {
+      # for compatibility with previous version
+      experimental_info <- reshape2::melt(experimental_info)
+      if(!is.null(col_by)) {
+        colnames(experimental_info)[1] <- col_by 
+      }
+    }
+    if(is.null(col_by)) {
+      col_by <- colnames(experimental_info)[1]
+    }
+    pca_plot[[col_by]] <- experimental_info[rownames(pca_plot), col_by]
+    if(!is.null(shape_by)) {
+      pca_plot[[shape_by]] <- experimental_info[rownames(pca_plot), shape_by]
+    }
   } else {
-    pca_plot$sample <- rownames(pca_plot) 
+    pca_plot[[col_by]] <- rownames(pca_plot) 
   }
   
   if(is.null(pal)) {
-    # pal <- function(x) (viridis::viridis(x))
     pal <- ggsci::pal_d3()
-    pal <- pal(length(unique(pca_plot$sample)))
+    pal <- pal(length(unique(pca_plot[,col_by])))
   }
+  pca_plot$repel_col_by <- pca_plot[,col_by]
   
-  p <- ggplot(pca_plot, aes_string(x=dim_1, y=dim_2, col="sample")) + geom_point(size=point_size) +
+  p <- ggplot(pca_plot, aes_string(x=dim_1, y=dim_2, col=col_by, shape=shape_by)) + geom_point(size=point_size) +
     xlab(paste0(dim_1," (",round(pca_summary[2,grep(paste0(dim_1,"$"), colnames(pca_summary))]*100,1),"%)")) +
     ylab(paste0(dim_2," (",round(pca_summary[2,grep(paste0(dim_2,"$"), colnames(pca_summary))]*100,1),"%)")) + 
-    theme_bw() + ggtitle(default.title) + my_theme +
+    theme_bw() + ggtitle(default.title) + my_theme_2 +
     theme(panel.grid.minor = element_blank()
           , plot.title = element_text(face="bold", hjust = 0.5, size=10)
           , aspect.ratio = 1) +
@@ -239,9 +320,10 @@ plotPCA <- function(x
     
   
   if(labels) {
-    p <- p + geom_label_repel(aes(label = rownames(pca_plot), col=sample),
+    p <- p + ggrepel::geom_label_repel(aes(label = rownames(pca_plot), col=repel_col_by),
                               fontface = 'bold'
                               # , color = 'black'
+                              , show.legend = F
                               , size=2,
                               box.padding = 0.35, point.padding = 0.5,
                               segment.color = 'grey50') 
@@ -254,7 +336,7 @@ plotPCA <- function(x
       spdata$Var2 <- as.numeric(gsub("PC", "",spdata$Var2))
       spdata      <- spdata[spdata$Var2<=max.pcs,]
       sp <- ggplot(spdata, aes(x=Var2, y=value, group=Var1, col=Var1)) + geom_point(size=1) + geom_line() +
-        theme_bw() + my_theme + scale_x_continuous(breaks = spdata$Var2) + 
+        theme_bw() + my_theme_2 + scale_x_continuous(breaks = spdata$Var2) + 
         geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
         xlab("Principal Component") + ylab("Explained Variance") + ggtitle("PCA - Scree Plot") + 
         theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank()) +
@@ -266,7 +348,7 @@ plotPCA <- function(x
       spdata      <- spdata[spdata$Var2<=max.pcs,]  
       
       sp <- ggplot(spdata, aes(x=Var2, y=value), col='black') + geom_point(size=1) + geom_line() +
-        theme_bw() + my_theme + scale_x_continuous(breaks = spdata$Var2) + 
+        theme_bw() + my_theme_2 + scale_x_continuous(breaks = spdata$Var2) + 
         geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
         xlab("Principal Component") + ylab("Standard Deviation") + ggtitle("PCA - Scree Plot") + 
         theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank())
@@ -292,10 +374,9 @@ getPCA <- function(x) {
               "pca_summary" = pca_summary))
 }
 
+
 plot_loadings <- function(pca_data, components, assigned = NULL)
 {
-  #source("Plots/theme_setting.R")
-  
   if(is.list(pca_data)) {
     pca_load <- pca_data$RNA_pca$rotation
   } else {
@@ -352,15 +433,13 @@ plotCorrelation <- function(x
                             , myPalette=NULL
                             , ...) {
   
-  require(ComplexHeatmap)
-  require(RColorBrewer)
   mcor <- cor(x, method=method, ...)
 
   if(is.null(myPalette)) {
-    myPalette <- colorRampPalette(brewer.pal(9, "YlOrRd"))
+    myPalette <- colorRampPalette(RColorBrewer::brewer.pal(9, "YlOrRd"))
   }
   hname <- paste0(method, " correlation")
-  cHM <- Heatmap(mcor
+  cHM <- ComplexHeatmap::Heatmap(mcor
                  , col  = myPalette(6)
                  , cell_fun = function(j, i, x, y, w, h, col) {
                          grid.text(round(mcor[i, j], digits = 2), x, y,gp = gpar(col='black', fontsize=6))
@@ -373,10 +452,12 @@ plotCorrelation <- function(x
                                                # legend_height = unit(0.5, "mm"),
                                                values_gp     = gpar(fontsize=8),
                                                legend_direction = "horizontal"))
-  return(draw(cHM, heatmap_legend_side = "bottom"))
+  return(ComplexHeatmap::draw(cHM, heatmap_legend_side = "bottom"))
 }
 
 # Differential Expression Analysis ====
+# still here for compatibility reason, 
+# will be deprecated as soon as possible
 calculateDiffExpr <- function(m
                               , group  = NULL
                               , filter = T
@@ -390,8 +471,6 @@ calculateDiffExpr <- function(m
                               , return.y  = F) {
   
   # Compute differential expression with EdgeR
-  
-  require(edgeR)
   message("[*] Run EdgeR for Differential Expression Analysis")
   
   if(is.null(group)) {
@@ -407,8 +486,8 @@ calculateDiffExpr <- function(m
   
   message(" -- Condition: ", paste0(levels(group), collapse = "-"))
   
-  y <- DGEList(counts=m, genes=rownames(m), group = group)
-  y <- calcNormFactors(y)
+  y <- edgeR::DGEList(counts=m, genes=rownames(m), group = group)
+  y <- edgeR::calcNormFactors(y)
   
   # Clean environment
   rm(m)
@@ -450,7 +529,7 @@ calculateDiffExpr <- function(m
   }
   
   rownames(design) <- colnames(y)
-  y <- estimateDisp(y, design, robust=TRUE)
+  y <- edgeR::estimateDisp(y, design, robust=TRUE)
   
   message(" -- Testing differential expression, method: ", method)
   if(length(cf)>1) {
@@ -459,32 +538,32 @@ calculateDiffExpr <- function(m
   
   if(method=="exact") {
     # Exact test
-    de <- exactTest(y)
-    de <- topTags(de, n = Inf)
+    de <- edgeR::exactTest(y)
+    de <- edgeR::topTags(de, n = Inf)
     
   } else if(method=="lrt") {
     # Likelihood-ratio test
-    fit <- glmFit(y, design)
+    fit <- edgeR::glmFit(y, design)
     if(is.null(contrast)){
       # Standard comparison
-      lrt <- glmLRT(fit, coef=cf)
+      lrt <- edgeR::glmLRT(fit, coef=cf)
     } else {
       # GLM with contrasts
-      lrt <- glmLRT(fit, contrast = contrast)
+      lrt <- edgeR::glmLRT(fit, contrast = contrast)
     }
-    de  <- topTags(lrt, n = Inf)
+    de  <- edgeR::topTags(lrt, n = Inf)
     
   } else if(method=="qlf") {
     # Quasi-likelihood F-test
-    fit <- glmQLFit(y, design)
+    fit <- edgeR::glmQLFit(y, design)
     if(is.null(contrast)){
       # Standard comparison
-      qlf <- glmQLFTest(fit, coef=cf)
+      qlf <- edgeR::glmQLFTest(fit, coef=cf)
     } else {
       # GLM with contrasts
-      qlf <- glmQLFTest(fit, contrast = contrast)
+      qlf <- edgeR::glmQLFTest(fit, contrast = contrast)
     }
-    de  <- topTags(qlf, n = Inf)
+    de  <- edgeR::topTags(qlf, n = Inf)
     
   } else {
     stop(message("[-] Method not available. Please, provide a valid one ( exact / lrt / qlf )."))
@@ -497,14 +576,132 @@ calculateDiffExpr <- function(m
     return(res)
     
   } else {
+    return(de)
+  }
+}
+
+calculateDiffExprEdgeR <- function(y, experimental_info = NULL
+                                   , gene_info = NULL
+                                   , group  = NULL
+                                   , reference = NULL # Control group
+                                   , filter = T
+                                   , filter.expr.th = 1
+                                   , filter.sample.th = 2
+                                   , normalize.using = "cpm"
+                                   , tlen = NULL
+                                   , method = "exact"
+                                   , anovalike = F # Activate ANOVA-like test for any difference (alternative to cf,contrast)
+                                   , design = NULL # Custom design matrix
+                                   , cf = NULL # Testing coefficient (default: last column in design matrix)
+                                   , contrast = NULL # Contrast matrix - character/numeric vector
+                                   , return.y  = F) {
+  
+  # Compute differential expression with edgeR
+  # Internals ---
+  get_contrast <- function(contrast, design)
+  {
+    if(is.character(contrast) & length(contrast) == 3) {
+      
+      contrast <- limma::makeContrasts(paste0(contrast[1], contrast[-1], collapse = "-"), levels = design)
+      
+    } 
+    return(contrast)
+  }
+  message("[*] Run edgeR for Differential Expression Analysis")
+  
+  if(is.matrix(y) | is.data.frame(y)) {
+    y <- processRNAseqEdgeR(m = y
+                            , experimental_info = experimental_info
+                            , gene_info = gene_info
+                            , group = group
+                            , reference = reference
+                            , filter = filter
+                            , filter.expr.th = filter.expr.th
+                            , filter.sample.th = filter.sample.th
+                            , normalize.using = normalize.using
+                            , tlen = tlen)
+  }
+  
+  if(is.null(design)) {
+    # Standard design matrix 
+    # First column is control ( = reference in group)
+    message(" -- Standard design matrix")
+    design <- model.matrix(~group, data = y$samples)
+    colnames(design)[-1] <- paste0(levels(group)[-1], "vs", levels(group)[1])
+  } else {
+    # Customized design matrix
+    # Passed as string formula or model.matrix
+    message(" -- Custom model matrix")
+    if(is.character(design)) {
+      design <- model.matrix(as.formula(design), data = y$samples)
+    }
+  }
+  
+  if(is.null(cf) & is.null(contrast)) {
+    if(anovalike) {
+      # Test all columns in design matrix (ANOVA-like)
+      # parametrize model wrt control ( = reference in group)
+      cf  <- 2:ncol(design)
+    } else {
+      # Default: last column in design matrix
+      cf  <- ncol(design)
+    }
+  }
+  
+  rownames(design) <- colnames(y)
+  y <- edgeR::estimateDisp(y, design, robust=TRUE)
+  
+  message(" -- Testing differential expression, method: ", method)
+  if(length(cf)>1) {
+    message(" -- ANOVA-like for multiple group comparison") 
+  }
+  
+  if(method=="exact") {
+    # Exact test
+    de <- edgeR::exactTest(y)
+    de <- edgeR::topTags(de, n = Inf)
     
+  } else if(method=="lrt") {
+    # Likelihood-ratio test
+    fit <- edgeR::glmFit(y, design)
+    if(is.null(contrast)){
+      # Standard comparison
+      lrt <- edgeR::glmLRT(fit, coef=cf)
+    } else {
+      # GLM with contrasts
+      contrast <- get_contrast(contrast = contrast, design = design)
+      lrt <- edgeR::glmLRT(fit, contrast = contrast)
+    }
+    de  <- edgeR::topTags(lrt, n = Inf)
+    
+  } else if(method=="qlf") {
+    # Quasi-likelihood F-test
+    fit <- edgeR::glmQLFit(y, design)
+    if(is.null(contrast)){
+      # Standard comparison
+      qlf <- edgeR::glmQLFTest(fit, coef=cf)
+    } else {
+      # GLM with contrasts
+      contrast <- get_contrast(contrast = contrast, design = design)
+      qlf <- edgeR::glmQLFTest(fit, contrast = contrast)
+    }
+    de  <- edgeR::topTags(qlf, n = Inf)
+    
+  } else {
+    stop(message("[-] Method not available. Please, provide a valid one ( exact / lrt / qlf )."))
+  }
+  
+  if(return.y) {
+    res <- list("y"  = y,
+                "de" = de)
+    return(res)
+    
+  } else {
     return(de)
   }
 }
 
 saveXLSresEdgeR <- function(res, outfile, name, force=T) {
-  
-  require(xlsx)
   # set java memory
   options(java.parameters = "-Xmx8000m")
   # java garbage collector
@@ -527,7 +724,7 @@ saveXLSresEdgeR <- function(res, outfile, name, force=T) {
       } else {
         ap <- i>1
       }
-      write.xlsx2(tox, file = outfile, sheetName = names(res)[i], append = ap, row.names = F)
+      xlsx::write.xlsx2(tox, file = outfile, sheetName = names(res)[i], append = ap, row.names = F)
     }
   } else {
     # ap  <- F
@@ -540,7 +737,7 @@ saveXLSresEdgeR <- function(res, outfile, name, force=T) {
     } else {
       ap <- F
     }
-    write.xlsx2(tox, file = outfile, sheetName = name, append = ap, row.names = F)
+    xlsx::write.xlsx2(tox, file = outfile, sheetName = name, append = ap, row.names = F)
   }
   
 }
@@ -609,11 +806,9 @@ getDEgsigned <- function(deg, signed=(-1))
   return(x[gene.idx,])
 }
 
+
 plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
 {
-  #source("Plots/theme_setting.R")
-  require(ggrepel)
-  
   fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
   pvIdx <- grep("adj.P.Val|FDR", colnames(de), value = T)
   tmp   <- de[,c(fcIdx,pvIdx)]
@@ -646,7 +841,7 @@ plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
     theme_bw() + my_theme + ggtitle(gtitle) +
     theme(plot.title = element_text(size=10, face = "bold", hjust = 0.5)) +
     scale_color_manual(values = c('#004C99','#404040','#CC0000')) +
-    geom_text_repel() +
+    ggrepel::geom_text_repel(sshow.legend = F) +
     geom_label(
       data    = subset(tmp, status=="Up-regulated"),
       mapping = aes(x = max(tmp$lfc)-1.5, y = max(-log10(tmp$padj))-30, label = nup, col = status),
@@ -880,8 +1075,6 @@ compute_fold_change <- function(x, y, pseudocount, logscale = F)
 
 analyze_relative_expression <- function(genes, dea, time_0 = "T0h", facet_formula = NULL)
 {
-  #source("Plots/theme_setting.R")
-  
   get_expression_fc <- function(dea, genes)
   {
     summarize_fc <- function(x, direction)
@@ -1007,33 +1200,33 @@ analyze_relative_expression <- function(genes, dea, time_0 = "T0h", facet_formul
 calculateDiffExprDESeq2 <- function(counts
                                     , info_analysis
                                     , design_formula 
-                                    , tests   = NULL
-                                    , fcth    = NULL
-                                    , pvth    = NULL
-                                    , outfile = NULL) 
+                                    , contrast_tests = NULL
+                                    , fcth           = NULL
+                                    , pvth           = NULL
+                                    , outfile        = NULL) 
 {
-  require("DESeq2")
   message("[*] Run DESeq2 for Differential Expression Analysis")
   m           <- counts[,rownames(info_analysis)]
   m           <- apply(m, 2, as.integer)
   rownames(m) <- rownames(counts)
   
-  dds <- DESeqDataSetFromMatrix(countData = m,
+  dds <- DESeq2::DESeqDataSetFromMatrix(countData = m,
                                 colData   = info_analysis,
                                 design    = as.formula(design_formula))
-  dds <- DESeq(dds)
+  dds <- DESeq2::DESeq(dds)
   
-  if(!is.null(tests)) {
+  if(!is.null(contrast_tests)) {
     res <- list()
-    for(i in tests) {
+    for(i in contrast_tests) {
+      k <- paste0(i[1],"_",i[2],"_vs_",i[3])
       if(!is.null(fcth) & !is.null(pvth)) {
-        res[[i]] <- list()
-        res[[i]]$result <- results(dds, name = i)
-        res[[i]]$sig <- subset(results(dds, name = i), abs(log2FoldChange)>=fcth & padj <= pvth)
-        res[[i]]$sig <- cbind.data.frame("genes"=rownames(res[[i]]$sig),res[[i]]$sig)
-        res[[i]]$sig <- res[[i]]$sig[order(res[[i]]$sig$padj, decreasing = F),]
+        res[[k]] <- list()
+        res[[k]]$result <- DESeq2::results(dds, contrast = i)
+        res[[k]]$sig <- subset(DESeq2::results(dds, contrast = i), abs(log2FoldChange)>=fcth & padj <= pvth)
+        res[[k]]$sig <- cbind.data.frame("genes"=rownames(res[[k]]$sig),res[[k]]$sig)
+        res[[k]]$sig <- res[[k]]$sig[order(res[[k]]$sig$padj, decreasing = F),]
       } else {
-        res[[i]] <- results(dds, name = i)
+        res[[k]] <- DESeq2::results(dds, contrast = i)
       }
     }
     if(!is.null(outfile)) {
@@ -1061,14 +1254,11 @@ cleaningP <- function(y, mod, svaobj, P=ncol(mod))
   
   return(cleany)
 }
-
 estimate_surrogate_vars <- function(y
                                     , mod = NULL # Custom model
                                     , clean = F
                                     , norm.var = "CPM") 
 {
-  require(sva)
-  
   if(class(y)!="DGEList") {
     stop(message("[!] Please, provide DGEList object."))
   }
@@ -1081,7 +1271,7 @@ estimate_surrogate_vars <- function(y
   }
   
   # estimate surrogate variables --
-  svseq <- svaseq(y[[norm.var]], mod, mod[,1])
+  svseq <- sva::svaseq(y[[norm.var]], mod, mod[,1])
   colnames(svseq$sv) <- paste0("sv", 1:ncol(svseq$sv)) 
   mod.sv <- cbind(mod, svseq$sv)
   
@@ -1099,8 +1289,6 @@ estimate_surrogate_vars <- function(y
 }
 
 # Clustering ====
-#source("clusterIndex.R")
-
 # K-means ---
 findClustSSE <- function(scaledata, nKM=20, ret=F)
 {
@@ -1117,7 +1305,6 @@ findClustSSE <- function(scaledata, nKM=20, ret=F)
 
 findClustASW <- function(scaledata, nKM=20, nstart = 100, ret=F)
 {
-  require(cluster)
   sil <- rep(0, nKM)
   #repeat k-means for 1:n and extract silhouette:
   for(i in 2:nKM){
@@ -1139,8 +1326,7 @@ findClustASW <- function(scaledata, nKM=20, nstart = 100, ret=F)
 findClustCal <- function(scaledata, nKM=20, ret=F)
 {
   # Calinski-Harabasz index
-  require(vegan)
-  fit <- cascadeKM(scaledata, 1, nKM, iter = 100)
+  fit <- vegan::cascadeKM(scaledata, 1, nKM, iter = 100)
   plot(fit, sortg = TRUE, grpmts.plot = TRUE)
   calinski.best <- as.numeric(which.max(fit$results[2,]))
   cat("Calinski criterion optimal number of clusters:", calinski.best, "\n")
@@ -1170,9 +1356,8 @@ setKMClusters <- function(m, method="silhouette", ...)
 # partitioning aroung medoids (PAM) ---
 setPAMCnumber <- function(m, metric = "euclidean", scaledata = T, nc = 12, ret = T)
 {
-  require(cluster)
   if(scaledata) m <- t(scale(t(m)))
-  pams <- lapply(2:nc, function(k) pam(m, k = k, metric = metric))
+  pams <- lapply(2:nc, function(k) cluster::pam(m, k = k, metric = metric))
   names(pams) <- 2:nc
   sw <- unlist(lapply(pams, function(i) i$silinfo$avg.width))
   oc <- as.numeric(names(pams)[which.max(sw)])
@@ -1182,9 +1367,8 @@ setPAMCnumber <- function(m, metric = "euclidean", scaledata = T, nc = 12, ret =
 }
 
 getPAM <- function(m, k, metric = "euclidean", scaledata = T, ...) {
-  require(cluster)
   if(scaledata) m <- t(scale(t(m)))
-  list('cluster' = pam(m,k, metric = metric, ...))
+  list('cluster' = cluster::pam(m,k, metric = metric, ...))
 }
 
 # Hierarchical clustering ---
@@ -1267,10 +1451,6 @@ get_heatmap3 <- function(m
                          , scale = T
                          , ...){
   
-  require(ComplexHeatmap)
-  require(circlize)
-  require(RColorBrewer)
-  
   base_mean <- rowMeans(m)
   if(scale) {
     m_scaled <- t(apply(m, 1, scale))
@@ -1279,7 +1459,7 @@ get_heatmap3 <- function(m
     m_scaled <- m
   }
   
-  bPalette <- colorRampPalette(brewer.pal(9, "Reds"))
+  bPalette <- colorRampPalette(RColorBrewer::brewer.pal(9, "Reds"))
   
   if(is.null(myPalette)) {
     myPalette <- c("blue","black","red")
@@ -1288,17 +1468,17 @@ get_heatmap3 <- function(m
   if(is.null(myZscale)) {
     myZscale <- c(-2, 0, 2)
   }
-  ramp <- colorRamp2(myZscale, myPalette)
+  ramp <- circlize::colorRamp2(myZscale, myPalette)
   
   
   if (!is.null(annotDF)) {
     if (!is.null(annotCol)) {
-      ha_column <- HeatmapAnnotation(df  = annotDF, 
+      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
                                      col = annotCol, 
                                      annotation_legend_param = list(title_gp  = gpar(fontsize=8),
                                                                     values_gp = gpar(fontsize=8)))
     } else {
-      ha_column <- HeatmapAnnotation(df  = annotDF, 
+      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
                                      annotation_legend_param = list(title_gp  = gpar(fontsize=8),
                                                                     values_gp = gpar(fontsize=8)))
     }
@@ -1308,7 +1488,7 @@ get_heatmap3 <- function(m
   
   if(is.null(myLegend)) myLegend <- "TPM" 
   
-  hm <- Heatmap(m_scaled, col = ramp,
+  hm <- ComplexHeatmap::Heatmap(m_scaled, col = ramp,
                 # show_row_dend = T,
                 # row_names_side = "left",
                 # row_names_gp = gpar(fontsize=8),
@@ -1329,8 +1509,8 @@ get_heatmap3 <- function(m
   
   if(bm) {
     bmscale <- summary(base_mean)
-    bmramp <- colorRamp2(c(bmscale[1],bmscale[3],bmscale[5]), bPalette(3))
-    bmh <- Heatmap(base_mean 
+    bmramp <- circlize::colorRamp2(c(bmscale[1],bmscale[3],bmscale[5]), bPalette(3))
+    bmh <- ComplexHeatmap::Heatmap(base_mean 
                    # , name = "Mean Expression"
                    , column_names_gp = gpar(fontsize=8)
                    , show_row_names = FALSE
@@ -1345,10 +1525,10 @@ get_heatmap3 <- function(m
   
   if(!is.null(fig_out)){
     pdf(file = fig_out, useDingbats = F, h=8, w=3, paper = "a4")
-    draw(hmOut, heatmap_legend_side = "right")
+    ComplexHeatmap::draw(hmOut, heatmap_legend_side = "right")
     dev.off()
   } else{
-    draw(hmOut, heatmap_legend_side = "right")
+    ComplexHeatmap::draw(hmOut, heatmap_legend_side = "right")
   }
   
   if(retHm) return(hmOut)
@@ -1365,16 +1545,13 @@ get_clusters <- function(m, hm){
   return(clusters)
 }
 
+
 plot_cluster_expression <- function(m, cl, pal)
 {
-  #source("Plots/theme_setting.R")
-  require(plyr)
-  require(ggpubr)
-  
   toplot <- lapply(cl, function(x) y <- m[x,])
   toplot <- reshape2::melt(toplot)
   colnames(toplot) <- c("gene","sample","tpm","cluster")
-  toplot <- ddply(toplot, .(gene, sample, cluster)
+  toplot <- plyr::ddply(toplot, .(gene, sample, cluster)
                   , summarize
                   , av_tpm = mean(tpm)
                   , log2_av_tpm = log2(mean(tpm)))
@@ -1403,9 +1580,7 @@ plot_hm_fc <- function(res_df
                        , myTitle = NULL
                        , ...)
 {
-  require(ComplexHeatmap)
-  require(circlize)
-  require(RColorBrewer)
+  
   
   if(any(grepl("FDR", colnames(res_df)))) {
     idx <- grep("logFC", colnames(res_df))
@@ -1415,18 +1590,18 @@ plot_hm_fc <- function(res_df
     fc <- res_df
   }
   if(is.null(myPalette)) {
-    myPalette <- rev(colorRampPalette(brewer.pal(6, "RdBu"))(3))
+    myPalette <- rev(colorRampPalette(RColorBrewer::brewer.pal(6, "RdBu"))(3))
   }
   
   if(is.null(myFCscale)) {
     myFCscale <- c(-1, 0, 1)
   }
-  ramp <- colorRamp2(myFCscale, myPalette)
+  ramp <- circlize::colorRamp2(myFCscale, myPalette)
   
   if(is.null(myTitle)) {
     myTitle <- "log2[fold-change]"
   }
-  hmfc <-  Heatmap(fc, col = ramp,
+  hmfc <-  ComplexHeatmap::Heatmap(fc, col = ramp,
                    # show_row_dend = T,
                    # row_names_side = "left",
                    # row_names_gp = gpar(fontsize=8),
@@ -1447,7 +1622,6 @@ plot_hm_fc <- function(res_df
 # Gene Ontology ====
 getGO <- function(x, reg="UP", ORGANISM = "mmusculus", gl_input=T){
   
-  require(gProfileR)
   # Perform GO term enrichment using gProfileR
   if(gl_input) {
     gene_list <- x
@@ -1459,7 +1633,7 @@ getGO <- function(x, reg="UP", ORGANISM = "mmusculus", gl_input=T){
     }
   }
   
-  gprofiler( gene_list,
+  gProfileR::gprofiler( gene_list,
              organism = ORGANISM,
              # custom_bg = background,
              max_p_value = 0.05,
@@ -1492,10 +1666,9 @@ processGO <- function(x, pvTh=0.05, cut=F){
   return(x)
 }
 
+
 plotGObars <- function(go, tool='clusterProfiler', ntop=NULL, ...)
   {
-  
-  #source("Plots/theme_setting.R")
   
   if(!is.null(ntop)) {
     go <- go[1:ntop,]
@@ -1521,8 +1694,6 @@ getGO_v2 <- function(geneList
                      , maxGSSize    = 500
                      , ...)
 {
-  require(clusterProfiler)
-  
   if(species=='mm') {
     require(org.Mm.eg.db)
     db <- org.Mm.eg.db
@@ -1536,7 +1707,7 @@ getGO_v2 <- function(geneList
   if(is.null(ont)) ont <- "BP"
   
   if(!custom){
-    ego <- enrichGO(   gene         = geneList
+    ego <- clusterProfiler::enrichGO(   gene         = geneList
                        , OrgDb         = db
                        , keyType       = 'SYMBOL'
                        , ont           = ont
@@ -1545,7 +1716,7 @@ getGO_v2 <- function(geneList
                        , qvalueCutoff  = qvalueCutoff
                        , maxGSSize     = maxGSSize)
   } else {
-    ego <- enrichGO(  gene         = geneList
+    ego <- clusterProfiler::enrichGO(  gene         = geneList
                       , OrgDb        = get(db)
                       , ... )
   }
@@ -1563,17 +1734,15 @@ get_kegg_pathway_enrichment <- function(geneList
                      , method = 'enrichment' # 'gsea'
                      , ...)
 {
-  require(clusterProfiler)
-  
   if(method=='enrichment') {
-    kk <- enrichKEGG(  gene         = geneList
+    kk <- clusterProfiler::enrichKEGG(  gene         = geneList
                      , organism     = species
                      , pvalueCutoff = pvalueCutoff
                      , ...)
     
   } else if(method=='gsea') {
     
-    kk <- gseKEGG(  geneList     = geneList
+    kk <- clusterProfiler::gseKEGG(  geneList     = geneList
                    , organism     = species
                    , nPerm        = 1000
                    , pvalueCutoff = pvalueCutoff
@@ -1617,6 +1786,7 @@ get_top_enrichment <- function(enrichment, top=10, ranking = "p.adjust")
   return(y)
 }
 
+
 plot_top_enrichment <- function(top_enrichment, transpose = F, ...) 
 {
   get_matrix <- function(x)
@@ -1642,17 +1812,14 @@ plot_top_enrichment <- function(top_enrichment, transpose = F, ...)
                            , term_font_size = 8
                            ,...)
   {
-    require(ComplexHeatmap)
-    require(circlize)
-    
     pal <- def.pal(...)
-    ramp <- colorRamp2(seq(0,length(pal)-1,1), pal)
+    ramp <- circlize::colorRamp2(seq(0,length(pal)-1,1), pal)
     # if(log_scale) {
     #   ramp <- colorRamp2(seq(-1,1,0.6), pal)
     #   idx <- m>0
     #   m[idx] <- log2(m[idx])
     #   }
-    hm <- Heatmap(m
+    hm <- ComplexHeatmap::Heatmap(m
                   , show_column_names = T
                   , show_row_names    = T
                   , col = ramp
@@ -1675,7 +1842,7 @@ plot_top_enrichment <- function(top_enrichment, transpose = F, ...)
                   # , ...
                   )
     
-    draw(hm, heatmap_legend_side = "top")
+    ComplexHeatmap::draw(hm, heatmap_legend_side = "top")
     
   }
   
@@ -1734,8 +1901,6 @@ find.variable.genes <- function(m
   genes <- rownames(y)[y$High=='TRUE']
   
   if(ret.plot) {
-    
-    #source("Plots/theme_setting.R")
     
     p <- ggplot(y, aes(x=log2_mean, y=log2_cv2, col=High)) + 
       geom_point(size=1) +

@@ -1,7 +1,5 @@
-require(ggplot2)
-require(ggsci)
-require(RColorBrewer)
-
+# Themes definitions ----
+# Theme 1 --
 my_theme <- theme(legend.position = "bottom"
                   , line = element_line(size=0.5)
                   , legend.title   = element_text(color="black",size=8)#rel(1.5)
@@ -13,7 +11,7 @@ my_theme <- theme(legend.position = "bottom"
                   , panel.grid.minor = element_blank()
                   , strip.text       = element_text(size=8)
                   , strip.background = element_rect(fill = NA))
-
+# Theme 2 --
 my_theme_2 <- theme(legend.position = "bottom"
                   , line = element_line(size=0.5)
                   , legend.title   = element_text(color="black",size=8)#rel(1.5)
@@ -35,6 +33,7 @@ my_theme_2 <- theme(legend.position = "bottom"
         , panel.grid = element_line(size = 0.25)
         , axis.ticks = element_line(size = 0.25))
 
+# Theme blank --
 blank_theme <- theme_minimal()+
   theme(
     axis.title.x = element_blank()
