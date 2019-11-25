@@ -13,20 +13,26 @@ Includes packages for the analysis of:<br/>
 - Sequence Data processing and analysis<br/>
 
 ### Installation
-Using devtools:
-
-```
-install.packages("devtools")
-devtools::install_github("https://github.com/andrealauria104/ngsRtools.git")
-```
-
-Alternatively, cloning the repo on your machine:
-
+Clone the repository on your machine:
 ```
 git clone https://github.com/andrealauria104/ngsRtools.git
-R CMD INSTALL ngsRtools
 ```
-From R:
+To install the complete suite of packages:
 ```
-devtools::instal("ngsRtools")
+cd ngsRtools
+./install.sh
+```
+This will install packages and dependencies. It will also test executability of programs in the `scripts` folder.<br/>
+Alternatively, yuo can install individual packages, for example:
+```
+R CMD INSTALL RNAseqRtools
+```
+or from R:
+```
+devtools::install("RNAseqRtools")
+```
+To uninstall the complete suite:
+```
+cd ngsRtools
+./uninstall.sh
 ```
