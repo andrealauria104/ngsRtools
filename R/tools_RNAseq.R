@@ -580,6 +580,25 @@ calculateDiffExpr <- function(m
   }
 }
 
+#' Differential Expression Analysis with edgeR
+#'
+#' Implementation of statistical models and tests 
+#' for differential expresion analysis using edgeR
+#' software package
+#' @param y count matrix (or data.frame) or object of class DGEList
+#' @param experimental_info data.frame containing informations about the experimental conditions for each sample
+#' @param group conditions to test
+#' @param method statistcal test to be performed (exact, lrt, qlf)
+#' @return results of the test (data.frame)
+#'
+#' @examples
+#' \dontrun{
+#'     dea <- calculateDiffExprEdgeR(y, expreimental_info
+#'     , group = experimental_info$group)
+#' }
+#' 
+#'
+#' @export
 calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                                    , gene_info = NULL
                                    , group  = NULL

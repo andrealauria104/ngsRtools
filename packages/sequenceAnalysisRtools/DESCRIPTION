@@ -12,7 +12,6 @@ Description: A Collection of Tools for Next-Generation Sequencing Data Analysis,
 Encoding: UTF-8
 LazyData: true
 Imports: 
-    ngsRutils,
     xlsx,
     ggplot2,
     ggrepel,
