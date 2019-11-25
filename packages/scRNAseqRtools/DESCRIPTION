@@ -1,4 +1,4 @@
-Package: ngsRtools
+Package: scRNAseqRtools
 Type: Package
 Title: Epigenomics NGS Data Analysis with R.
 Version: 0.1.0
@@ -11,25 +11,12 @@ Description: A Collection of Tools for Next-Generation Sequencing Data Analysis,
     - BS-seq
 Encoding: UTF-8
 LazyData: true
+Depends: R (>= 3.5.0)
 Imports: 
-    xlsx,
-    ggplot2,
-    ggrepel,
-    reshape2,
-    ComplexHeatmap,
-    RColorBrewer,
-    edgeR,
-    DESeq2,
-    sva,
-    cluster,
-    vegan,
-    circlize,
-    plyr,
-    ggpubr,
-    gProfileR,
-    clusterProfiler,
-    org.Mm.eg.db,
-    org.Hs.eg.db,
-    ggsci,
-    grid
+    RNAseqRtools,
+    SingleCellExperiment,
+    scater,
+    scran,
+    SC3,
+    monocle
 License: MIT + file LICENSE

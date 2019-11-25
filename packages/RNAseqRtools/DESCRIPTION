@@ -1,4 +1,4 @@
-Package: ngsRtools
+Package: RNAseqRtools
 Type: Package
 Title: Epigenomics NGS Data Analysis with R.
 Version: 0.1.0
