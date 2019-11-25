@@ -22,7 +22,11 @@ To install the complete suite of packages:
 cd ngsRtools
 ./install.sh
 ```
+<<<<<<< HEAD
 This will install packages and dependencies. It will also test executability of programs in the `scripts` folder.<br/>
+=======
+This will install packages and dependencies. It will also test executability of programs in the scripts/ folder.<br/>
+>>>>>>> 6cc690c2015d982b4620a75c319506e139c828b1
 Alternatively, yuo can install individual packages, for example:
 ```
 R CMD INSTALL RNAseqRtools
