@@ -1,0 +1,9 @@
+* installing *source* package ‘RNAseqRtools’ ...
+** R
+** byte-compile and prepare package for lazy loading
+** help
+No man pages found in package  ‘RNAseqRtools’ 
+*** installing help indices
+** building package indices
+** testing if installed package can be loaded
+* DONE (RNAseqRtools)

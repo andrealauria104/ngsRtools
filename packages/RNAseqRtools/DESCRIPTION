@@ -13,24 +13,14 @@ Encoding: UTF-8
 LazyData: true
 Imports: 
     utilsRtools,
-    xlsx,
-    ggplot2,
-    ggrepel,
-    reshape2,
     ComplexHeatmap,
-    RColorBrewer,
     edgeR,
     DESeq2,
     sva,
     cluster,
     vegan,
-    circlize,
-    plyr,
-    ggpubr,
     gProfileR,
     clusterProfiler,
     org.Mm.eg.db,
-    org.Hs.eg.db,
-    ggsci,
-    grid
+    org.Hs.eg.db
 License: MIT + file LICENSE
