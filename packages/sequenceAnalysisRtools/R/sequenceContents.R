@@ -1,9 +1,7 @@
 # GC content ====
 compute_gc_content <- function(sequence)
 {
-  require(Biostrings)
-  
-  n <- sapply(DNA_BASES, vcountPattern, subject=sequence)
+  n <- sapply(Biostrings::DNA_BASES, Biostrings::vcountPattern, subject=sequence)
   rownames(n) <- names(sequence)
   gc_content  <- round((n[,'G']+n[,'C'])/rowSums(n),4)
   
@@ -15,23 +13,11 @@ get_gc_from_fasta <- function(fasta
                               # , ...
 )
 {
-  
-  require(parallel)
-  
   message("[+] Compute GC content from fasta")
   message("  -- file: "   , fasta)
   
-  sequence   <- readDNAStringSet(fasta)
+  sequence   <- Biostrings::readDNAStringSet(fasta)
   gc_content <- compute_gc_content(sequence = sequence)
-  # sequence_list  <- sequence_to_list(fasta = fasta)
-  #
-  # gc_content <- mclapply(sequence_list
-  #                        , compute_gc_content
-  #                        , mc.silent = T
-  #                        , ... )
-  #
-  # gc_content <- reshape2::melt(gc_content)
-  # colnames(gc_content) <- c('gc_content', 'sequence_id')
   
   gc_content <- reshape2::melt(gc_content)
   gc_content <- cbind.data.frame('sequence_id' = rownames(gc_content)
@@ -53,9 +39,7 @@ compute_expected_CpG <- function(sequence
                                  , method = 'G-G-F' # Gardiner-Frommer / (S-B-B) Saxonov-Berg-Brutlag
 )
 {
-  require(Biostrings)
-  
-  n <- sapply(DNA_BASES, vcountPattern, subject=sequence)
+  n <- sapply(Biostrings::DNA_BASES, Biostrings::vcountPattern, subject=sequence)
   rownames(n) <- names(sequence)
   
   if( method == 'G-G-F' ) {
@@ -76,11 +60,10 @@ compute_expected_CpG <- function(sequence
 
 compute_normalized_CpG <- function(sequence, ...)
 {
-  require(Biostrings)
   
-  n <- sapply(DNA_BASES, vcountPattern, subject=sequence)
+  n <- sapply(Biostrings::DNA_BASES, Biostrings::vcountPattern, subject=sequence)
   
-  observed_cpg <- vcountPattern(pattern = 'CG', subject = sequence)
+  observed_cpg <- Biostrings::vcountPattern(pattern = 'CG', subject = sequence)
   names(observed_cpg) <- names(sequence)
   expected_cpg <- compute_expected_CpG(sequence = sequence, ...)
   normalized_cpg <- observed_cpg/expected_cpg
@@ -94,18 +77,10 @@ get_normCpG_from_fasta <- function(fasta
                                    , ...)
 {
   
-  require(parallel)
-  
   message("[+] Compute normalized CpG content from fasta")
   message("  -- file: "   , fasta)
   
-  # sequence_list  <- sequence_to_list(fasta = fasta)
-  #
-  # normCpG_content <- mclapply(sequence_list
-  #                        , compute_normalized_CpG
-  #                        , mc.silent = T
-  #                        , ... )
-  sequence   <- readDNAStringSet(fasta)
+  sequence   <- Biostrings::readDNAStringSet(fasta)
   normCpG_content <- compute_normalized_CpG(sequence = sequence, ...)
   
   normCpG_content <- reshape2::melt(normCpG_content)
@@ -127,7 +102,6 @@ plot_cpg <- function(counts
                      , ptitle = NULL)
 {
   
-  #source("theme_setting.R")
   counts <- reshape2::melt(counts, id.var='sequence_id')
   n <- length(unique(counts$variable))
   

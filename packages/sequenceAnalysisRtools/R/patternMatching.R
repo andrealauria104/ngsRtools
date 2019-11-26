@@ -6,23 +6,14 @@ count_from_fasta <- function(fasta
                              # , ...
 )
 {
-  require(Biostrings)
-  require(parallel)
   
   message("[+] Count from fasta")
   message("  -- file: "   , fasta)
   message("  -- pattern: ", pattern)
   
-  # sequence_list  <- sequence_to_list(fasta = fasta)
-  #
-  # pattern_counts <- mclapply(sequence_list
-  #                            , vcountPattern
-  #                            , pattern   = pattern
-  #                            , mc.silent = T
-  #                            , ... )
-  fa <- readDNAStringSet(fasta)
+  fa <- Biostrings::readDNAStringSet(fasta)
   
-  pattern_counts <- vcountPattern(pattern = pattern, subject = fa)
+  pattern_counts <- Biostrings::vcountPattern(pattern = pattern, subject = fa)
   names(pattern_counts) <- names(fa)
   
   pattern_counts <- reshape2::melt(pattern_counts)
@@ -50,9 +41,6 @@ count_from_fasta <- function(fasta
 plot_pattern <- function(pattern_counts, pattern
                          , ptitle = NULL)
 {
-  
-  #source("theme_setting.R")
-  
   pal <- pal_d3()(2)[2]
   
   if(any(grepl('GC content', pattern))) {
@@ -79,9 +67,9 @@ get_pattern_matching <- function(pattern_seq, fa, max.mismatch=1, ...)
 {
   if(is.character(fa)) {
     message("[+] Reading from fasta: ", fa)
-    fa <- readDNAStringSet(filepath = fa, format = "fasta")
+    fa <- Biostrings::readDNAStringSet(filepath = fa, format = "fasta")
   }
-  pattern <- DNAStringSet(pattern_seq, use.names = T)
+  pattern <- Biostrings::DNAStringSet(pattern_seq, use.names = T)
   
   matches <- vector(mode = 'list', length = length(pattern_seq))
   names(matches) <- names(pattern_seq)
@@ -90,7 +78,7 @@ get_pattern_matching <- function(pattern_seq, fa, max.mismatch=1, ...)
     message("[+] Matching sequence: ", pattern_seq[[i]])
     message(" -- max mismatch = ", max.mismatch)
     # match pattern
-    match <- vmatchPattern(pattern   = pattern_seq[[i]]
+    match <- Biostrings::vmatchPattern(pattern   = pattern_seq[[i]]
                            , subject = fa
                            , with.indels  = F
                            , max.mismatch = max.mismatch
