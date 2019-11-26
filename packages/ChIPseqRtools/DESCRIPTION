@@ -11,7 +11,8 @@ Description: A Collection of Tools for Next-Generation Sequencing Data Analysis,
     - BS-seq
 Encoding: UTF-8
 LazyData: true
+Depends:
+    utilsRtools,
 Imports: 
-   utilsRtools,
    GenomicRanges
 License: MIT + file LICENSE

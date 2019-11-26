@@ -7,7 +7,7 @@
 # 
 # 0. Variables/Functions ---
 WD=$PWD
-PKGS=$(ls packages)
+PKGS=$(ls -d packages/*tools | sed -e 's/.*\///g')
 
 # 1. Uninstall suite ---
 for P in $PKGS
