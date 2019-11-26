@@ -15,8 +15,11 @@ Depends: R (>= 3.5.0)
 Imports: 
     RNAseqRtools,
     SingleCellExperiment,
+    BiocGenerics,
     scater,
     scran,
     SC3,
-    monocle
+    monocle,
+    Rtsne,
+    rjson
 License: MIT + file LICENSE

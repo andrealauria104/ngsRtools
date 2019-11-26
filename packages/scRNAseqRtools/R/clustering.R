@@ -1,7 +1,6 @@
 # Clustering ----
 plot_cinfo <- function(cinfo, structure, feature, pal, info_type = "absolute", mode = "bar")
 {
-  #source("theme_setting.R")
   if(length(feature)>1) {
     nm <- apply(cinfo[,feature], 1, paste, collapse = "_")
     cinfo$sample <- gsub("_","/",nm)
@@ -125,9 +124,4 @@ plot_cinfo <- function(cinfo, structure, feature, pal, info_type = "absolute", m
   }
   
   return(p)
-}
-
-get_cell_clusters_heatmap <- function()
-{
-  
 }

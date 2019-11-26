@@ -58,19 +58,7 @@ read_salmon_quant <- function(DATADIR
   if(length(sub_idx)>0) {
     counts[sub_idx] <- lapply(counts[sub_idx], function(i) rep(0,length(counts[[1]])))
   }
-  # miss <- setdiff(nm,sapply(strsplit(fl, "/"), "[[",13))
-  # miss <- setdiff(nm,sapply(strsplit(fl, "/"), function(i) grep("EPI_|Epi_|ME_|EMPTY_|Minibulk_", i, value = T)))
-  # if(length(miss)>0) {
-  #   miss_idx <- which(nm%in%miss)
-  #   counts[[length(fl)+1]] <- rep(0,length(counts[[1]]))
-  #   names(counts) <- nm[-miss_idx]
-  #   names(counts)[length(counts)] <- miss
-  #
-  #   counts <- counts[c((1:miss_idx-1),length(counts), (miss_idx):(length(counts)-1))]
-  #
-  # } else {
-  #   names(counts) <- nm
-  # }
+ 
   names(counts) <- nm
   counts <- do.call(cbind, counts)
   rownames(counts) <- info$Name
@@ -119,14 +107,14 @@ prepare_cds_from_sce <- function(sce, pre.normalized = T)
   
   if(pre.normalized) {
     # Use previous normalization
-    cds <- newCellDataSet(normcounts(sce)
+    cds <- monocle::newCellDataSet(normcounts(sce)
                           , phenoData   = pd
                           , featureData = fd
                           , expressionFamily = VGAM::negbinomial.size())
     sizeFactors(cds) <- sizeFactors(sce)
   } else {
     # Use monocle normalization
-    cds <- newCellDataSet(counts(sce)
+    cds <- monocle::newCellDataSet(counts(sce)
                           , phenoData   = pd
                           , featureData = fd
                           , expressionFamily = VGAM::negbinomial.size())

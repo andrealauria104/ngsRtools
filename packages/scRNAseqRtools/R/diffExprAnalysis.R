@@ -1,8 +1,6 @@
 # Differential Expression ----
 plot_cmarker_expression <- function(ebs, genes, pal, structure = "Cluster",log = T, assay.type = NULL, point.size = 0.5, plot.type = 'boxplot', filter = F)
 {
-  #source("theme_setting.R")
-  
   if(is.null(assay.type)) {
     if(log) {
       marker <- logcounts(ebs)[genes,]

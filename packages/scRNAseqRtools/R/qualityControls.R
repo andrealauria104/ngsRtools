@@ -1,14 +1,13 @@
 # Quality Controls - Raw data ----
 read_salmon_stats <- function(DATADIR)
 {
-  require(rjson)
   fl <- list.files(DATADIR
                    , pattern = 'meta_info.json'
                    , recursive = T
                    , full.names = T)
   nm <- list.files(DATADIR)
   stats <- lapply(fl, function(i) {
-    tmp <- fromJSON(file = i)
+    tmp <- rjson::fromJSON(file = i)
     idx <- grep('mapped|processed', names(tmp))
     tmp <- tmp[idx]
     tmp <- cbind.data.frame(tmp)
@@ -90,8 +89,6 @@ plot_stats <- function(stats, vars, ptitle
                        , xintercept = 1e5
                        , lim = c(0,100))
 {
-  #source("theme_setting.R")
-  
   if(missing(vars)) {
     bw <- function(x) (2 * IQR(x) / length(x)^(1/3)) # Freedman–Diaconis rule
     toplot <- reshape2::melt(stats)
@@ -201,7 +198,6 @@ plot_all_stats <- function(gene_stats, outdirs, return_plots=T, ...)
 
 plot_hisat_stats <- function(stats, size_cutoff)
 {
-  #source("theme_setting.R")
   toplot <- stats
   idx <- toplot[with(toplot, order(library_size, decreasing = F)),'sample']
   toplot <- reshape2::melt(toplot[,c(2:4,7)], id.var = 'sample')

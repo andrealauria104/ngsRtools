@@ -8,11 +8,8 @@ model_variance <- function(sce
                            , mean.cutoff = 0.1)
 {
   
-  require(scran)
   plot_variance <- function(decomp)
   {
-    #source("theme_setting.R")
-    
     p <- ggplot(as.data.frame(decomp), aes(x=mean, y=total, col=hv)) +
       geom_point(size=1) +
       geom_line(aes(y=tech), col='#CC0000') +
@@ -23,14 +20,14 @@ model_variance <- function(sce
   }
   
   # Fit a mean-dependent trend to the gene-specific variances (technical variance)
-  varfit <- trendVar(sce
+  varfit <- scran::trendVar(sce
                      , parametric = T
                      , method     = method
                      , assay.type = assay.type
                      , use.spikes = F)
   
   # Decompose the gene-specific variance into biological and technical components
-  decomp  <- decomposeVar(sce, varfit)
+  decomp  <- scran::decomposeVar(sce, varfit)
   decomp  <- decomp[order(decomp$bio, decreasing=TRUE), ]
   
   hv      <- decomp

@@ -6,10 +6,7 @@ getTSNE <- function(x
                     , marker     = NULL
                     , ...)
 {
-  require(Rtsne)
-  #source("theme_setting.R")
-  
-  tsne <- Rtsne(x, ...)
+  tsne <- Rtsne::Rtsne(x, ...)
   tsneplot <- as.data.frame(tsne$Y)
   rownames(tsneplot) <- rownames(x)
   
@@ -72,7 +69,6 @@ getTSNE <- function(x
 # Dimensionality reduction ----
 plot_dimred_cells <- function(cds, pal, ...)
 {
-  #source("theme_setting.R")
   if(missing(pal)) pal <- 'grey'
   p <- plot_cells(cds, ...) +
     scale_color_manual(values = pal) +
