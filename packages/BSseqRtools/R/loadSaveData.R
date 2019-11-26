@@ -7,7 +7,6 @@ read_bsmap     <- function(bsmap_files
                            , hiTh = 99.9
                            , normalize = F
                            , ...) {
-  require(methylKit)
   
   message("[+] Read bsmap methratio \n")
   
@@ -30,7 +29,7 @@ read_bsmap     <- function(bsmap_files
     return(nr)
   }))
   
-  obj <- methRead( location    = as.list(bsmap_files)
+  obj <- methylKit::methRead( location    = as.list(bsmap_files)
                    , sample.id  = as.list(names(bsmap_files))
                    , treatment  = treat
                    , assembly   = assembly
@@ -47,7 +46,7 @@ read_bsmap     <- function(bsmap_files
                                        , freqC.col    = 5)
   )
   
-  obj <- filterByCoverage(obj
+  obj <- methylKit::filterByCoverage(obj
                           , lo.count = cv
                           , lo.perc  = NULL
                           , hi.count = NULL
@@ -55,10 +54,10 @@ read_bsmap     <- function(bsmap_files
   
   if(normalize) {
     message('[+] Normalizing coverage ...')
-    obj <- normalizeCoverage(obj)
+    obj <- methylKit::normalizeCoverage(obj)
   }
   
-  meth <- unite(obj, destrand=F, min.per.group=min)
+  meth <- methylKit::unite(obj, destrand=F, min.per.group=min)
   
   return(meth)
 }
@@ -124,7 +123,7 @@ create_begraph <- function(mtr.ratio, outfile, samp)
 
 save_bedgraph <- function(mC, outbg)
 {
-  bedgraph(methylObj   = mC
+  methylKit::bedgraph(methylObj   = mC
            , col.name  = 'meth.diff'
            , file.name = outbg
            , unmeth    = T)

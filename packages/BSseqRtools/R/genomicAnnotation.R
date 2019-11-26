@@ -1,28 +1,27 @@
 # Annotate CpG ====
 associate_to_feature <- function(sites, feature)
 {
-  require(GenomicRanges)
   
   if(grepl('data.frame', class(sites))) {
-    tranges <- makeGRangesFromDataFrame(sites)
+    tranges <- GenomicRanges::makeGRangesFromDataFrame(sites)
   } else if(grepl('methyl', class(sites))) {
     tranges <- as(sites,"GRanges")
   } else {
     tranges <- sites
   }
   
-  dist_feature <- distance2NearestFeature(tranges, tss = feature)
+  dist_feature <- genomation::distance2NearestFeature(tranges, tss = feature)
   sites$feature[dist_feature$target.row] <- dist_feature$feature.name
   sites$distance[dist_feature$target.row] <- dist_feature$dist.to.feature
   
   return(sites)
 }
+
 get_target_feature <- function(targets, mtr)
 {
-  require(plyr)
-  mtr.ratio <- percMethylation(mtr, rowids = T)
+  mtr.ratio <- methylKit::percMethylation(mtr, rowids = T)
   
-  targets <- dlply(targets, ~feature, function(x) x[,c('names','feature')])
+  targets <- plyr::dlply(targets, ~feature, function(x) x[,c('names','feature')])
   n_sites <- unlist(lapply(targets, nrow))
   idx <- which(n_sites>=quantile(n_sites)['50%'])
   tmp <- targets[idx]
@@ -43,7 +42,7 @@ get_target_feature <- function(targets, mtr)
     
     keep <- c('names', grep('mean', colnames(x), value = T))
     x <- reshape2::melt(x[,keep])
-    x <- ddply(x, .(variable), summarize, mean = mean(value))
+    x <- plyr::ddply(x, .(variable), summarize, mean = mean(value))
     colnames(x)[1] <- 'condition'
     x$condition <- gsub('mean_','', x$condition)
     j <<- j+1
@@ -57,6 +56,7 @@ get_target_feature <- function(targets, mtr)
   
   return(y)
 }
+
 get_mC_feature <- function(sites, feature_name)
 {
   if(grepl('methyl', class(sites))) {
@@ -64,29 +64,27 @@ get_mC_feature <- function(sites, feature_name)
   }
   subset(sites, feature==feature_name)
 }
+
 build_genomic_annotation <- function(path_tss, path_exons, path_introns
                                      , path_names = NULL
                                      , up.flank = 1500
                                      , dw.flank = 1500)
 {
   # Build genomic annotation from bed
-  require(GenomicRanges)
-  require(genomation)
-  
   message("[+] Build genomic annotation from bed")
   
   message(" -- Reading TSS from: ", path_tss)
-  tss       <- readBed(path_tss, zero.based = F)
+  tss       <- genomation::readBed(path_tss, zero.based = F)
   colnames(tss@elementMetadata)[2] <- 'gene_name'
   
   message(" -- Define promoters, boundaries: up = ", up.flank, " down = ", dw.flank)
-  promoters <- extend(x = tss, upstream = up.flank, downstream = dw.flank)
+  promoters <- GenomicRanges::extend(x = tss, upstream = up.flank, downstream = dw.flank)
   
   message(" -- Reading exons from: ", path_exons)
-  exons   <- readBed(path_exons  , zero.based = T)
+  exons   <- genomation::readBed(path_exons  , zero.based = T)
   
   message(" -- Reading introns from: ", path_introns)
-  introns <- readBed(path_introns, zero.based = T)
+  introns <- genomation::readBed(path_introns, zero.based = T)
   
   
   gen_ann <- list('tss'       = tss,
@@ -115,6 +113,7 @@ build_genomic_annotation <- function(path_tss, path_exons, path_introns
   
   return(gen_ann)
 }
+
 build_other_annotation <- function(paths)
 {
   ann <- vector(mode = 'list', length = length(paths))
@@ -130,19 +129,20 @@ build_other_annotation <- function(paths)
   
   return(ann)
 }
+
 prepare_maps <- function(mtr, gen_ann, ...)
 {
   if(grepl('methyl', class(mtr))) {
     mtrranges <- as(mtr,"GRanges")
   } else if(grepl('data.frame', class(mtr))) {
-    mtrranges <- makeGRangesFromDataFrame(mtr)
+    mtrranges <- GenomicRanges::makeGRangesFromDataFrame(mtr)
   } else if(grepl('GRanges', class(mtr))) {
     mtrranges <- mtr
   }
   
   if( is.character(gen_ann) ) {
     if(grepl('.bed', gen_ann)) {
-      gen_ann <- readBed(gen_ann, ...)
+      gen_ann <- genomation::readBed(gen_ann, ...)
     }
   }
   
@@ -150,13 +150,12 @@ prepare_maps <- function(mtr, gen_ann, ...)
                  , 'gen_ann' = gen_ann)
   return(inputs)
 }
+
 map_cytosines <- function(mtr, gen_ann
                           , ordered = T
                           , precedence = c('promoters', 'exons', 'introns','intergenic')
-                          , ...
-)
+                          , ...)
 {
-  require(GenomicRanges)
   
   inputs <- prepare_maps(mtr = mtr, gen_ann = gen_ann, ...)
   
@@ -179,30 +178,28 @@ map_cytosines <- function(mtr, gen_ann
       for(i in nm) {
         message(" --- region: ", i)
         
-        ov <- findOverlaps( mtrranges
+        ov <- GenomicRanges::findOverlaps( mtrranges
                             , gen_ann[[i]]
                             , ignore.strand=T
                             , type = 'any')
         
-        hits    <- unique(queryHits(ov))
+        hits    <- unique(GenomicRanges::queryHits(ov))
         maps[i] <- length(hits)
         ovs[[i]] <- mtrranges[hits]
         
       }
     } else {
       print('here')
-      ov <- findOverlaps( mtrranges
+      ov <- GenomicRanges::findOverlaps( mtrranges
                           , gen_ann
                           , ignore.strand=T
                           , type = 'any')
       
-      hits <- unique(queryHits(ov))
+      hits <- unique(GenomicRanges::queryHits(ov))
       maps <- length(hits)
       ovs  <- mtrranges[hits]
-    }
     
-    # return(maps)
-    
+      }
   } else if(ordered) {
     
     precedence <- ordered(factor(precedence))
@@ -219,12 +216,12 @@ map_cytosines <- function(mtr, gen_ann
       message(" --- region: ", i)
       
       if( i!='intergenic' ) {
-        ov <- findOverlaps( tomap
+        ov <- GenomicRanges::findOverlaps( tomap
                             , gen_ann[[i]]
                             , ignore.strand=T
                             , type = 'any')
         
-        hits    <- unique(queryHits(ov))
+        hits    <- unique(GenomicRanges::queryHits(ov))
         maps[i] <- length(hits)
         ovs[[i]] <- tomap[hits]
         tomap <- tomap[-hits,]
@@ -237,10 +234,9 @@ map_cytosines <- function(mtr, gen_ann
   }
   return(list('maps' = maps, 'ovs' = ovs))
 }
+
 plot_map_pie <- function(maps, ptitle = NULL)
 {
-  #source("theme_setting.R")
-  require(scales)
   
   mp <- cbind.data.frame('region' = names(maps), reshape2::melt(maps))
   if(any(grepl('promoters', mp$region))) {
@@ -261,13 +257,14 @@ plot_map_pie <- function(maps, ptitle = NULL)
           , plot.title = element_text(size = 8, face = 'bold', hjust = 0.5, vjust = 0.7)
           , text = element_text(size = 8))+
     geom_label(aes(y = ypos,
-                   label = percent(perc))
+                   label = scales::percent(perc))
                , size=2.8
                , show.legend = F
                , fill = 'white')
   
   return(pie)
 }
+
 map_regions <- function(gen_ann, mtr, ...)
 {
   inputs <- prepare_maps(mtr = mtr, gen_ann = gen_ann, ...)
@@ -275,19 +272,19 @@ map_regions <- function(gen_ann, mtr, ...)
   mtrranges <- inputs$mtrranges
   gen_ann   <- inputs$gen_ann
   
-  cov <- countOverlaps( gen_ann
+  cov <- GenomicRanges::countOverlaps( gen_ann
                         , mtrranges
                         , ignore.strand=T
                         , type = 'any')
   names(cov) <- as.character(gen_ann$gene_name)
   
-  ov <- findOverlaps( gen_ann
+  ov <- GenomicRanges::findOverlaps( gen_ann
                       , mtrranges
                       , ignore.strand=T
                       , type = 'any')
   
-  out1 <- as.data.frame(gen_ann[queryHits(ov),])
-  tmp <- mtrranges[subjectHits(ov),]
+  out1 <- as.data.frame(gen_ann[GenomicRanges::queryHits(ov),])
+  tmp <- mtrranges[GenomicRanges::subjectHits(ov),]
   names(tmp) <- NULL
   out2 <- as.data.frame(tmp)[,1:3]
   out <- cbind.data.frame(out1, out2)
@@ -295,11 +292,10 @@ map_regions <- function(gen_ann, mtr, ...)
   
   if(any(grepl('refseq', colnames(out)))) {
     
-    require(plyr)
     out$idx <- gsub(" ","", apply(out[,9:11], 1, paste0, collapse = '_'))
     out <- out[which(!duplicated(out[,'idx'])),]
     
-    outc <- dlply(unique(out[,c('gene_name','refseq','counts')]), .(gene_name), function(x)
+    outc <- plyr::dlply(unique(out[,c('gene_name','refseq','counts')]), .(gene_name), function(x)
     {
       counts <- sum(x$counts)
       return(counts)
@@ -313,13 +309,14 @@ map_regions <- function(gen_ann, mtr, ...)
   
   return(out)
 }
+
 map_diff_mC <- function(diff_mC, gen_ann
                         , q_th  = 0.05
                         , m_th  = 10
                         , ...)
 {
   if(grepl('methyl', class(diff_mC))) {
-    diff_mC <- getData(diff_mC)
+    diff_mC <- methylKit::getData(diff_mC)
   }
   hyper <- subset(diff_mC, meth.diff>=m_th & qvalue<=q_th)
   hypo <- subset(diff_mC, meth.diff<=(-m_th) & qvalue<=q_th)
@@ -329,10 +326,11 @@ map_diff_mC <- function(diff_mC, gen_ann
   
   return(list('hyper' = hyper, 'hypo' = hypo))
 }
+
 get_maps_mtr <- function(mtr, maps, average=T)
 {
   # Calculate per sample methratio
-  mtr.ratio <- percMethylation(mtr, rowids = T)
+  mtr.ratio <- methylKit::percMethylation(mtr, rowids = T)
   rm(mtr)
   if(average) mtr.ratio <- get_average_methylation(mtr.ratio)
   
@@ -358,19 +356,7 @@ get_maps_mtr <- function(mtr, maps, average=T)
   }
   return(maps.mtratio)
 }
-prepare_enhancer <- function(path_enhancer)
-{
-  enhancer <- read.table(path_enhancer
-                         , header = F
-                         , nrows = 29134
-                         , stringsAsFactors = F)
-  
-  enhancer <- makeGRangesFromDataFrame(enhancer
-                                       , seqnames.field = 'V1'
-                                       , start.field = 'V2'
-                                       , end.field = 'V3')
-  return(enhancer)
-}
+
 prepare_icr <- function(path_icr, mode = 'base')
 {
   tmp_icr <- read.delim2(path_icr
@@ -378,7 +364,7 @@ prepare_icr <- function(path_icr, mode = 'base')
                          , col.names = c('chr', 'start', 'end', 'name')
                          , stringsAsFactors = F)
   
-  tmp_icr <- makeGRangesFromDataFrame(tmp_icr
+  tmp_icr <- GenomicRanges::makeGRangesFromDataFrame(tmp_icr
                                       , seqnames.field = 'chr'
                                       , start.field    = 'start'
                                       , end.field      = 'end'
@@ -399,6 +385,7 @@ prepare_icr <- function(path_icr, mode = 'base')
   
   return(icr)
 }
+
 prepare_repeats <- function(path_repeats, path_repinfo)
 {
   message('[+] preparing repeats')
@@ -419,7 +406,11 @@ prepare_repeats <- function(path_repeats, path_repinfo)
   
   return(repeats_ann)
 }
+
 get_rangestring <- function(grange)
 {
-  paste(seqnames(grange),start(grange),end(grange), sep = '.')
+  paste(GenomicRanges::seqnames(grange)
+        , GenomicRanges::start(grange)
+        , GenomicRanges::end(grange)
+        , sep = '.')
 }

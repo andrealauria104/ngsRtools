@@ -7,18 +7,12 @@ get_meth_pca   <- function(meth
                            , scree_plot_type = "explained_variance"
                            , point_size = 2){
   
-  #source("theme_setting.R")
-  
-  require(ggplot2)
-  require(ggrepel)
-  require(reshape2)
-  require(methylKit)
-  
-  pca  <- PCASamples(meth,
+  pca  <- methylKit::PCASamples(meth,
                      screeplot=F,
                      filterByQuantile = T,
                      sd.threshold=0.5,
                      obj.return = T)
+  
   if((is.null(max.pcs) || max.pcs > ncol(RNA_pca$x))) {
     max.pcs <- ncol(pca$x)
   }
@@ -47,7 +41,7 @@ get_meth_pca   <- function(meth
   if(labels) {
     rownames(pca_plot) <- gsub("_"," ",rownames(pca_plot))
     rownames(pca_plot) <- gsub(" rep "," - rep",rownames(pca_plot))
-    p <- p + geom_label_repel(aes(label = rownames(pca_plot), col=sample),
+    p <- p + ggrepel::geom_label_repel(aes(label = rownames(pca_plot), col=sample),
                               fontface = 'bold'
                               , show.legend = F
                               # , color = 'black'

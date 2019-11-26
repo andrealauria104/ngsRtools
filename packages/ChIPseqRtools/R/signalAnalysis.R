@@ -120,9 +120,6 @@ analyze_peaks <- function(path_matrix, pheno_1, pheno_2, method = 'wilcoxon-sign
 
 plot_peaks <- function(peaks, pheno_1, pheno_2, pal = NULL)
 {
-  require(ggplot2)
-  #source("theme_setting.R")
-  
   if(is.null(pal)) pal <- c("orange","black","grey")
   
   ax.max <- round(max(unlist(peaks[,grep('score', colnames(peaks))]))+0.5,1)
@@ -151,7 +148,6 @@ analyze_profile <- function(mat, method = 'mean', distance = 3000)
   # internal functions ---
   get_profile <- function(mat, distance, method = 'mean')
   {
-    require(reshape2)
     
     profile_func <- function(method, ...)
     {
@@ -170,7 +166,7 @@ analyze_profile <- function(mat, method = 'mean', distance = 3000)
     bid <- grep("bin", cn)
     
     profile <- apply(mat[,bid],2, profile_func, method = method)
-    profile <- melt(profile)
+    profile <- reshape2::melt(profile)
     profile$pheno <- sapply(strsplit(rownames(profile),"_"),"[[",1)
     profile$pheno[grep("KO", profile$pheno)] <- "3BKO"
     profile$bin   <- as.numeric(sapply(strsplit(rownames(profile),"_"),"[[",3))
@@ -184,9 +180,6 @@ analyze_profile <- function(mat, method = 'mean', distance = 3000)
   }
   plot_profile <- function(profile)
   {
-    require(ggplot2)
-    #source("theme_setting.R")
-    
     p <- ggplot(profile, aes(x=distance, y=value, group=pheno)) + geom_line(aes(col=pheno)) + facet_grid(~status) +
       xlab("distance from midpoint \n (base-pairs)") + ylab("log2 [IP/input] ") + theme_bw() + my_theme +
       theme(aspect.ratio = 1, panel.grid.major = element_blank(), legend.title = element_blank()
@@ -224,8 +217,6 @@ analyze_profile_v2 <- function(mat, method = 'mean', distance = 3000, pal = NULL
   # internal functions ---
   get_profile <- function(mat, distance, method = 'mean')
   {
-    require(reshape2)
-    
     profile_func <- function(method, ...)
     {
       if(method=='mean') {
@@ -243,7 +234,7 @@ analyze_profile_v2 <- function(mat, method = 'mean', distance = 3000, pal = NULL
     bid <- grep("bin", cn)
     
     profile <- apply(mat[,bid],2, profile_func, method = method)
-    profile <- melt(profile)
+    profile <- reshape2::melt(profile)
     profile$pheno <- sapply(strsplit(rownames(profile),"_"),"[[",1)
     profile$bin   <- as.numeric(sapply(strsplit(rownames(profile),"_"),"[[",3))
     
@@ -257,9 +248,6 @@ analyze_profile_v2 <- function(mat, method = 'mean', distance = 3000, pal = NULL
   }
   plot_profile <- function(profile, pal)
   {
-    require(ggplot2)
-    #source("theme_setting.R")
-    
     p <- ggplot(profile, aes(x=distance, y=value, group=pheno)) + geom_line(aes(col=pheno)) + facet_grid(~status) +
       xlab("distance from midpoint \n (base-pairs)") + ylab("log2 [IP/input] ") + theme_bw() + my_theme +
       theme(panel.grid.major = element_blank()

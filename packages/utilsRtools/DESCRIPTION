@@ -21,5 +21,6 @@ Imports:
     plyr,
     ggpubr,
     ggsci,
-    grid
+    grid,
+    scales
 License: MIT + file LICENSE
