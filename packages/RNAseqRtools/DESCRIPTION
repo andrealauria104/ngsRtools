@@ -20,6 +20,7 @@ Imports:
     sva,
     cluster,
     vegan,
+    dynamicTreeCut,
     gProfileR,
     clusterProfiler,
     org.Mm.eg.db,

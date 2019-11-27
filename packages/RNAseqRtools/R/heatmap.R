@@ -96,7 +96,7 @@ get_heatmap3 <- function(m
 
 get_clusters <- function(m, hm){
   # Retrieve clusters from K-means
-  clusters <- lapply(row_order(hm), 
+  clusters <- lapply(ComplexHeatmap::row_order(hm), 
                      function(x){
                        rownames(m[x,])
                      }

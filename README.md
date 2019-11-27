@@ -1,16 +1,16 @@
 # ngsRtools
-A Suite of R Packages for NGS-based Epigenomics Data Analysis.
+A Suite of R Packages for NGS-based Epigenomic Data Analysis.
 
 ### Description
 A Collection of Statistical and Visualization Tools for Next-Generation Sequencing Data Analysis, with a focus on Epigenomics research.<br/> 
 <br/>
 Includes packages for the analysis of:<br/>
 
-- RNA-seq (bulk transcriptomics)<br/>
-- scRNA-seq (single-cell transcriptomics)<br/>
-- ChIP-seq (genome-wide Protein-DNA binding)<br/>
-- BS-seq (genome-wide DNA methylation analysis)<br/>
-- Sequence Data processing and analysis<br/>
+- RNA-seq (bulk transcriptomics) - `RNAseqRtools` <br/>
+- scRNA-seq (single-cell transcriptomics) - `scRNAseqRtools` <br/>
+- ChIP-seq (genome-wide Protein-DNA binding) - `ChIPseqRtools` <br/>
+- BS-seq (genome-wide DNA methylation analysis) - `BSseqRtools` <br/>
+- Sequence Data processing and analysis - `sequenceAnalysisRtools` <br/>
 
 ### Installation
 Clone the repository on your machine:
