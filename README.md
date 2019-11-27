@@ -1,7 +1,7 @@
-## ngsRtools
+# ngsRtools
 A Suite of R Packages for NGS-based Epigenomic Data Analysis.
 
-#### Description
+### Description
 A Collection of Statistical and Visualization Tools for Next-Generation Sequencing Data Analysis, with a focus on Epigenomics research.<br/> 
 <br/>
 It includes packages for the analysis of:<br/>
@@ -12,9 +12,9 @@ It includes packages for the analysis of:<br/>
 - BS-seq (genome-wide DNA methylation analysis) - `BSseqRtools` <br/>
 - Sequence Data processing and analysis - `sequenceAnalysisRtools` <br/>
 
-#### Prerequisites
+### Prerequisites
 The suite is based on a set of CRAN and R/Bioconductor packages. The complete list of 
-required packages is reported here for each component of the suite.<br/>
+required packages is reported here for each component of the suite:<br/>
 
 - `RNAseqRtools`: `edgeR`, `DESeq2`, `sva`, `cluster`, `gProfileR`, `clusterProfiler`, `dynamicTreeCut`, `ComplexHeatmap`.<br/>
 - `scRNAseqRtools`: `scater`, `scran`, `monocle`.<br/>
@@ -25,7 +25,7 @@ required packages is reported here for each component of the suite.<br/>
 
 The installation script will automatically take care of dependencies (see **Installation** section).
 
-#### Installation
+### Installation
 Clone the repository on your machine:
 ```
 git clone https://github.com/andrealauria104/ngsRtools.git
