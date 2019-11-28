@@ -368,7 +368,6 @@ getDEgsigned <- function(deg, signed=(-1))
   return(x[gene.idx,])
 }
 
-
 plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
 {
   fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
@@ -395,25 +394,27 @@ plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
     tmp$lab <- ""
   }
   
-  p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=1, alpha=0.8) + theme_bw() +
+  p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=1, alpha=0.6) + theme_bw() +
     geom_hline(yintercept = -log10(pvTh), linetype = 'dashed', lwd = 0.25) + 
     geom_vline(xintercept = lfcTh, linetype = 'dashed', lwd = 0.25) +
     geom_vline(xintercept = -lfcTh, linetype = 'dashed', lwd = 0.25) +
     xlab("logFC") + ylab("adjusted P-value") +
-    theme_bw() + my_theme + ggtitle(gtitle) +
-    theme(plot.title = element_text(size=10, face = "bold", hjust = 0.5)) +
+    theme_bw() + my_theme_2 + ggtitle(gtitle) +
     scale_color_manual(values = c('#004C99','#404040','#CC0000')) +
-    ggrepel::geom_text_repel(sshow.legend = F) +
+    ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
     geom_label(
       data    = subset(tmp, status=="Up-regulated"),
       mapping = aes(x = max(tmp$lfc)-1.5, y = max(-log10(tmp$padj))-30, label = nup, col = status),
-      size = 3
+      size = 2,
+      show.legend = F
     ) +
     geom_label(
       data    = subset(tmp, status=="Down-regulated"),
       mapping = aes(x = min(tmp$lfc)+1.5, y = max(-log10(tmp$padj))-20, label = ndw, col = status),
-      size = 3
-    ) 
+      size = 2,
+      show.legend = F
+    ) +
+    guides(col = guide_legend(nrow = 2))
   
   return(p)
 }
