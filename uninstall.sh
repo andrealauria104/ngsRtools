@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # '''
 # ngsRtools: A Suite of R Packages for NGS-based Epigenomics Data Analysis.
 # 
