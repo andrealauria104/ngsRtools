@@ -84,7 +84,6 @@ get_qmtr_ratio <- function(mtr.ratio)
 
 plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
 {
-  #source("theme_setting.R")
   qm <- reshape2::melt(q.mtr.ratio, varnames = c('methylation','sample'))
   nm <- rev(levels(qm$methylation))
   qm$methylation <- factor(qm$methylation, levels = nm)
@@ -130,8 +129,6 @@ plot_methratio_v2 <- function(mtr
                               , cond.pos.id = NULL
                               , sample.precedence = NULL)
 {
-  require(plyr)
-  
   if(grepl('methyl', class(mtr))) {
     mtratio  <- methylKit::percMethylation(mtr, rowids = T)
     if(sum(table(colnames(mtr.ratio)))!=ncol(mtr.ratio)) mtratio <- get_average_methylation(mtratio)
@@ -286,14 +283,12 @@ intersect_mtr <- function(mtr_x, mtr_y
                           , return.obj = "GRanges"
                           , return.merged = F)
 {
-  require(GenomicRanges)
-  
   convert_input <- function(mtr)
   {
     if(grepl('methyl', class(mtr))) {
       mtrranges <- as(mtr,"GRanges")
     } else if(grepl('data.frame', class(mtr))) {
-      mtrranges <- makeGRangesFromDataFrame(mtr)
+      mtrranges <- GenomicRanges::makeGRangesFromDataFrame(mtr)
     } else if(grepl('GRanges', class(mtr))) {
       mtrranges <- mtr
     }
@@ -302,9 +297,9 @@ intersect_mtr <- function(mtr_x, mtr_y
   mtr_x <- convert_input(mtr_x)
   mtr_y <- convert_input(mtr_y)
   
-  ov <- findOverlaps(mtr_x, mtr_y, ignore.strand=T, type = 'any')
-  x <- mtr_x[queryHits(ov),]
-  y <- mtr_y[subjectHits(ov),]
+  ov <- IRanges::findOverlaps(mtr_x, mtr_y, ignore.strand=T, type = 'any')
+  x <- mtr_x[S4Vectors::queryHits(ov),]
+  y <- mtr_y[S4Vectors::subjectHits(ov),]
   
   if(return.merged) {
     colnames(x@elementMetadata) <- paste0(colnames(x@elementMetadata),"_x")

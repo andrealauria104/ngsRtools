@@ -16,5 +16,7 @@ Depends:
 Imports:
    methylKit,
    GenomicRanges,
-   genomation
+   genomation, 
+   S4Vectors,
+   IRanges
 License: MIT + file LICENSE

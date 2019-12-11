@@ -178,24 +178,24 @@ map_cytosines <- function(mtr, gen_ann
       for(i in nm) {
         message(" --- region: ", i)
         
-        ov <- GenomicRanges::findOverlaps( mtrranges
+        ov <- IRanges::findOverlaps( mtrranges
                             , gen_ann[[i]]
                             , ignore.strand=T
                             , type = 'any')
         
-        hits    <- unique(GenomicRanges::queryHits(ov))
+        hits    <- unique(S4Vectors::queryHits(ov))
         maps[i] <- length(hits)
         ovs[[i]] <- mtrranges[hits]
         
       }
     } else {
       print('here')
-      ov <- GenomicRanges::findOverlaps( mtrranges
+      ov <- IRanges::findOverlaps( mtrranges
                           , gen_ann
                           , ignore.strand=T
                           , type = 'any')
       
-      hits <- unique(GenomicRanges::queryHits(ov))
+      hits <- unique(S4Vectors::queryHits(ov))
       maps <- length(hits)
       ovs  <- mtrranges[hits]
     
@@ -216,12 +216,12 @@ map_cytosines <- function(mtr, gen_ann
       message(" --- region: ", i)
       
       if( i!='intergenic' ) {
-        ov <- GenomicRanges::findOverlaps( tomap
+        ov <- IRanges::findOverlaps( tomap
                             , gen_ann[[i]]
                             , ignore.strand=T
                             , type = 'any')
         
-        hits    <- unique(GenomicRanges::queryHits(ov))
+        hits    <- unique(S4Vectors::queryHits(ov))
         maps[i] <- length(hits)
         ovs[[i]] <- tomap[hits]
         tomap <- tomap[-hits,]
@@ -278,13 +278,13 @@ map_regions <- function(gen_ann, mtr, ...)
                         , type = 'any')
   names(cov) <- as.character(gen_ann$gene_name)
   
-  ov <- GenomicRanges::findOverlaps( gen_ann
+  ov <- IRanges::findOverlaps( gen_ann
                       , mtrranges
                       , ignore.strand=T
                       , type = 'any')
   
-  out1 <- as.data.frame(gen_ann[GenomicRanges::queryHits(ov),])
-  tmp <- mtrranges[GenomicRanges::subjectHits(ov),]
+  out1 <- as.data.frame(gen_ann[S4Vectors::queryHits(ov),])
+  tmp <- mtrranges[S4Vectors::subjectHits(ov),]
   names(tmp) <- NULL
   out2 <- as.data.frame(tmp)[,1:3]
   out <- cbind.data.frame(out1, out2)
