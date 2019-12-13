@@ -23,7 +23,7 @@ get_all_substr <- function(x, n, sub.method)
   return(ss)
 }
 
-calculate_string_distance <- function(s, sub.method = "all", split.by = "\\-", verbose = F)
+calculate_string_distance <- function(s, sub.method = "all", split.by = "\\-", verbose = F, nc = 1)
 {
   calc_distance <- function(s, sub.method, split.by, verbose) {
     
@@ -54,8 +54,10 @@ calculate_string_distance <- function(s, sub.method = "all", split.by = "\\-", v
   if(length(s) <= 2) {
     index_distance <- calc_distance(s = s, sub.method = sub.method, split.by = split.by, verbose = verbose)
   } else {
-    index_comb <- combn(x = index_comb,2, FUN=paste, collapse = "-")
-    index_distance <- lapply(index_comb, calculate_string_distance, sub.method = sub.method, split.by = split.by, verbose = verbose)
+    message("[+] Calculating pairwise combinations ...")
+    index_comb <- combn(x = s,2, FUN=paste, collapse = "-")
+    message("[+] Calculating pairwise distances ...")
+    index_distance <- parallel::mclapply(index_comb, calc_distance, sub.method = sub.method, split.by = split.by, verbose = verbose, mc.cores = nc)
     names(index_distance) <- index_comb
   }
   return(index_distance)
