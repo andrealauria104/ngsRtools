@@ -1,4 +1,90 @@
 # Load and prepare data ====
+# read methylation calls data
+read_mcall <- function(mfiles
+                       , experimental_info = NULL
+                       , context  = "CpG"
+                       , assembly = "mm9"
+                       , min  = NULL
+                       , cv   = 10
+                       , hiTh = 99.9
+                       , normalize = F
+                       , pipeline
+                       , ...) {
+  
+  message("[+] Read methylation call data \n")
+  
+  if(missing(pipeline)) {
+    stop(message("[!] Missing pipeline: provide valid argument (bsmap/bismarkCoverage). "))
+  }
+  
+  message(" -- pipeline: ", pipeline,"\n")
+  
+  lapply(mfiles, function(i)
+  {
+    message(" -- Processing file:", i)
+  }
+  )
+  message("\n")
+  
+  if(!is.null(experimental_info)) {
+    
+    treatment <- experimental_info$treatment
+    sample.id <- as.list(experimental_info$sample.id)
+    
+  } else if(is.null(experimental_info) && !is.null(names(mfiles))) {
+    n_rep <- table(names(mfiles))
+    pheno <- unique(names(mfiles))
+    
+    i <- 0
+    treatment <- rev(sapply(pheno, function(x) {
+      nr <- rep(i, n_rep[x])
+      i <<- i + 1
+      return(nr)
+    }))
+    sample.id <- as.list(names(mfiles))
+    
+  } else {
+    stop(message("[!] Missing experimental design information. "))
+  } 
+  
+  if(pipeline=="bsmap") {
+    pipeline <- list(fraction = TRUE
+                     , chr.col      = 1
+                     , start.col    = 2
+                     , end.col      = 2
+                     , coverage.col = 6
+                     , strand.col   = 3
+                     , freqC.col    = 5)
+  }
+  
+  obj <- methylKit::methRead( location    = as.list(mfiles)
+                              , sample.id  = sample.id
+                              , treatment  = treatment
+                              , assembly   = assembly
+                              , header     = TRUE
+                              , context    = context
+                              , resolution = "base"
+                              , mincov     = cv
+                              , pipeline   = pipeline
+  )
+  
+  obj <- methylKit::filterByCoverage(obj
+                                     , lo.count = cv
+                                     , lo.perc  = NULL
+                                     , hi.count = NULL
+                                     , hi.perc  = hiTh)
+  
+  if(normalize) {
+    message('[+] Normalizing coverage ...')
+    obj <- methylKit::normalizeCoverage(obj)
+  }
+  
+  meth <- methylKit::unite(obj, destrand=F, min.per.group=min)
+  
+  return(meth)
+}
+
+# for compatibility only, to be deprecated soon
 read_bsmap     <- function(bsmap_files
                            , context  = "CpG"
                            , assembly = "mm9"

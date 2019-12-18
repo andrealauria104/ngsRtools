@@ -63,37 +63,6 @@ data_summary <- function(x)
   return(c(y=m,ymin=ymin,ymax=ymax))
 }
 
-# Venn diagram ====
-plot_venn_diagram <- function(vd_list, outfig = NULL, pal = NULL, main = NULL)
-{
-  require(VennDiagram)
-  nc <- length(vd_list)
-  if(is.null(pal)) pal <- ggsci::pal_d3()(nc)
-  vd <- venn.diagram(vd_list
-                     , margin = 0.2
-                     , fill = pal
-                     , alpha = 0.5
-                     , col = rep('white',nc)
-                     , filename = NULL
-                     , lwd = 0.5
-                     , cat.dist = 0.07
-                     # , cat.fontface = 'bold'
-                     , cat.cex = 0.9
-                     , main = main)
-  
-  if( !is.null(outfig) ) {
-    message(" -- Save to: ", outfig)
-    pdf(file=outfig, paper = "a4", h=unit(6,'cm'), w=unit(6,'cm'))
-    grid.draw(vd)
-    dev.off()
-    
-  }
-  rmlog <- list.files(pattern = 'VennDiagram.*.log')
-  unlink(rmlog)
-  grid.draw(vd)
-}
-
-
 # GeneId reference ====
 prepare_idRef <- function(ANN){
   

@@ -39,6 +39,7 @@ plotPCA <- function(x, experimental_info = NULL
       pca_plot[[shape_by]] <- experimental_info[rownames(pca_plot), shape_by]
     }
   } else {
+    if(is.null(col_by)) col_by <- "samples"
     pca_plot[[col_by]] <- rownames(pca_plot) 
   }
   

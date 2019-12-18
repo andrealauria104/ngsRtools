@@ -127,11 +127,12 @@ plot_methratio_v2 <- function(mtr
                               , precedence = NULL
                               , time.pos.id = NULL
                               , cond.pos.id = NULL
-                              , sample.precedence = NULL)
+                              , sample.precedence = NULL
+                              , violin.style = 1)
 {
   if(grepl('methyl', class(mtr))) {
     mtratio  <- methylKit::percMethylation(mtr, rowids = T)
-    if(sum(table(colnames(mtr.ratio)))!=ncol(mtr.ratio)) mtratio <- get_average_methylation(mtratio)
+    if(sum(table(colnames(mtratio)))!=ncol(mtratio)) mtratio <- get_average_methylation(mtratio)
   } else {
     mtratio  <- mtr
   }
@@ -169,14 +170,15 @@ plot_methratio_v2 <- function(mtr
     mtratio$tmp <- NULL
     mtratio$condition <- gsub("_","-",mtratio$condition)
     
-  } else {
+  } else if(type%in%c("density","histogram")) {
     stop(message("[!] Please provide average values for density/histogram plots with replicates."))
   }
   
   if(!is.null(sample.precedence)) {
     if(length(sample.precedence)==length(unique(mtratio$condition))) {
-      mtratio$condition <- factor(mtratio$condition, levels = gsub("_","-",sample.precedence))
-    } 
+      mtratio$condition <- factor(mtratio$condition, levels = sample.precedence)
+      levels(mtratio$condition) <- gsub("_","-",levels(mtratio$condition))
+    }
   }
   
   mtratio$sample <- gsub("_","-",mtratio$sample)
@@ -199,16 +201,26 @@ plot_methratio_v2 <- function(mtr
       p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample))
     }
     dodge <- position_dodge(width = 0.8)
-    p <- p0 +
-      geom_violin(trim = T, position = dodge, lwd = 0.25, alpha = 0.7) + 
-      geom_boxplot(width=0.08, outlier.color = NA, position = dodge, lwd = 0.25, show.legend = F, alpha = 0.7) + 
-      stat_summary(fun.y=median, geom="point", size=0.5, color="black", position = dodge) +
-      theme_classic() + my_theme +
-      theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)
-            , panel.grid = element_blank()
-            , strip.background.y = element_blank()
-            , strip.background.x = element_rect(size=0.25)) + guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
-      scale_fill_manual(values = pal) + ylab("% CG methylation")  + scale_y_continuous(breaks = c(0,50,100), limits = c(0,100))  
+    if(violin.style==1) {
+      p <- p0 +
+        geom_violin(trim = T, position = dodge, lwd = 0.25, alpha = 0.7) + 
+        geom_boxplot(width=0.08, outlier.color = NA, position = dodge, lwd = 0.25, show.legend = F, alpha = 0.7) + 
+        stat_summary(fun.y=median, geom="point", size=0.5, color="black", position = dodge, show.legend = F) +
+        theme_classic() + my_theme +
+        theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)
+              , panel.grid = element_blank()
+              , strip.background.y = element_blank()
+              , strip.background.x = element_rect(size=0.25)) + guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
+        scale_fill_manual(values = pal) + ylab("% CG methylation")  + scale_y_continuous(breaks = c(0,50,100), limits = c(0,100))  
+    } else if(violin.style==2) {
+      p <- p0 +
+        geom_violin(aes(col=sample), trim=T, fill="white") + 
+        theme_bw() + my_theme_2 + scale_color_manual(values = pal) + 
+        stat_summary(fun.y=median, geom="point", size=1, color="red", show.legend = F) +
+        guides(col=guide_legend(nrow=2)) +
+        ylab("% CG methylation")  + scale_y_continuous(breaks = c(0,50,100), limits = c(0,100))   
+    }
+    
   }else if(type=='density'){
     if(any(grepl("L1", colnames(mtratio)))) {
       facet_formula <- paste0("L1~time")

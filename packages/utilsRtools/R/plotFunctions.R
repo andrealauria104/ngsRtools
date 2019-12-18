@@ -85,3 +85,63 @@ pie_chart <- function(data, main, value = NULL, labels = NULL, condition = NULL,
   return(p)
   
 }
+
+## Venn diagram ----
+plot_venn_diagram <- function(vd_list
+                              , pal    = NULL
+                              , outfig = NULL
+                              , plot.h = 3
+                              , plot.w = 3
+                              , ...)
+{
+  nc <- length(vd_list)
+  if(is.null(pal)) {
+    pal <- ggsci::pal_aaas()(nc) 
+  } else if(is.character(pal)) {
+    pal <- pal[1:nc]
+  } else if(is.function(pal)) {
+    pal <- pal(nc)
+  }
+  
+  names(vd_list) <- gsub("_"," ", names(vd_list))
+  
+  vd <- VennDiagram::venn.diagram(
+    x = vd_list
+    
+    # diagram
+    , margin = 0.1
+    , fill = pal
+    , alpha = 0.5
+    , col = rep('white',nc)
+    , filename = NULL
+    # , lwd = 0.5
+    , lwd = 2
+    , lty = 'blank'
+    
+    # numbers
+    , fontfamily = "sans"
+    , cex = .6
+    
+    # title
+    , main.fontfamily = "sans"
+    , main.cex = 0.8
+    
+    # names
+    , cat.fontfamily = "sans"
+    , cat.cex = .6
+    , cat.default.pos = "outer"
+    , cat.dist = 0.1
+    , rotation = 1
+    , ... )
+  
+  if( !is.null(outfig) ) {
+    message(" -- Save to: ", outfig)
+    pdf(file=outfig, paper = "a4", h=unit(plot.h,'cm'), w=unit(plot.w,'cm'))
+    grid.draw(vd)
+    dev.off()
+    
+  }
+  rmlog <- list.files(pattern = 'VennDiagram.*.log')
+  unlink(rmlog)
+  grid.draw(vd)
+}
