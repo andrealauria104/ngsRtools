@@ -1,6 +1,6 @@
 # Gene Ontology ====
-getGO <- function(x, reg="UP", ORGANISM = "mmusculus", gl_input=T){
-  
+getGO <- function(x, reg="UP", ORGANISM = "mmusculus", gl_input=T)
+{
   # Perform GO term enrichment using gProfileR
   if(gl_input) {
     gene_list <- x
@@ -31,8 +31,8 @@ getGO <- function(x, reg="UP", ORGANISM = "mmusculus", gl_input=T){
   
 }
 
-processGO <- function(x, pvTh=0.05, cut=F){
-  
+processGO <- function(x, pvTh=0.05, cut=F)
+{
   x <- subset(x, p.value<=0.05)
   x <- x[,c("term.name", "p.value")]
   if( any(duplicated(x$term.name))) x <- x[-which(duplicated(x$term.name)),]
@@ -44,7 +44,6 @@ processGO <- function(x, pvTh=0.05, cut=F){
   x <- x[with(x, order(p.value, decreasing = F)),]
   return(x)
 }
-
 
 plotGObars <- function(go, tool='clusterProfiler', ntop=NULL, ...)
 {
@@ -59,8 +58,8 @@ plotGObars <- function(go, tool='clusterProfiler', ntop=NULL, ...)
   } else if( tool == 'clusterProfiler') {
     go$Description <- factor(go$Description, 
                              levels = go$Description[order(go$qvalue, decreasing = T)])
-    ggplot(go, aes(x=Description, y=-log10(qvalue))) + geom_col(position = "dodge", ...) +
-      coord_flip() + theme_bw() + my_theme + theme(panel.grid = element_blank())
+    ggplot(go, aes(x=Description, y=-log10(qvalue))) + geom_col(position = "dodge", alpha = 0.8, ...) +
+      coord_flip() + theme_bw() + my_theme_2 + theme(axis.title.y=element_blank())
   }
 }
 
@@ -241,4 +240,63 @@ plot_top_enrichment <- function(top_enrichment, transpose = F, ...)
   }
   if(transpose) m <- t(m)
   plot.heatmap(m, ...)
+}
+
+process_enrich_results <- function(enrich_res, gene_info
+                                   , fdrth = NULL
+                                   , dea = NULL
+                                   , outfile = NULL
+                                   , outplot = NULL)
+{
+  if(any(grep("enrichResult",class(enrich_res)))) {
+    enrich_res <- enrich_res@result
+  }
+  
+  if(any(grep("mm", enrich_res$ID))) {
+    enrich_res$geneID <- sapply(enrich_res$geneID, function(x)
+    {
+      x <- unlist(strsplit(x,"/"))
+      nm <- as.character(gene_info$external_gene_name[match(unlist(strsplit(x,"/")), gene_info$entrezgene)])
+      nm <- paste0(nm,collapse = "/")
+      return(nm)
+    })
+  }
+  
+  if(!is.null(deg)) {
+    if(any(grep("TopTags",class(deg)))) {
+      deg <- deg$table
+    }
+    nde <- lapply(enrich_res$geneID, function(x)
+    {
+      x <- unlist(strsplit(x,"/"))
+      idx <- match(x, deg$genes)
+      nup <- sum(deg[idx,'logFC']>0)
+      ndw <- sum(deg[idx,'logFC']<0)
+      return(data.frame("N.up" = nup,"N.dw"=ndw))
+    })
+    enrich_res <- cbind.data.frame(enrich_res, nde)
+  }
+  if(!is.null(fdrth)) {
+    enrich_res <- subset(enrich_res, qvalue <= fdrth)
+  }
+  if(!is.null(outfile)) {
+    saveXLSresEdgeR(enrich_res, outfile = outfile, name = "KEGG enrichment results")
+  }
+  
+  if(!is.null(outplot)) {
+    toplot <- enrich_res[,c("Description","N.up","N.dw","qvalue")]
+    toplot$descore <- (toplot$N.up-toplot$N.dw)*(-log10(toplot$qvalue))
+    toplot <- toplot[order(abs(toplot$descore), decreasing = T),]
+    nm <- toplot$Description
+    toplot$Description <- factor(toplot$Description, levels = nm)
+    toplot$direction <- factor(sign(toplot$descore))
+    p <- ggplot(toplot[1:15,], aes(y=descore, x=Description, fill = direction)) + geom_col(alpha=0.7) +
+      theme_bw() + my_theme_2 + scale_fill_manual(values = c('darkblue','darkred', 'lightgrey')) +
+      coord_flip()
+    
+    pdf(file = outplot, paper = 'a4', w = unit(4,'cm'), h = unit(4,'cm'), useDingbats = F)
+    print(p)
+    dev.off()
+    
+  }
 }

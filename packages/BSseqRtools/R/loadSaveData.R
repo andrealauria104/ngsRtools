@@ -225,3 +225,35 @@ save_bedgraph <- function(mC, outbg)
     system(command = i)
   }
 }
+
+# mapping statistics
+get_bsmap_stats <- function(bsmaplog)
+{
+  get_stats <- function(y) 
+  {
+    yy <- readLines(y)
+    z <- yy[length(yy)-1]
+    x <- gsub("\t","",yy[length(yy)])
+    x <- sapply(strsplit(x,","),"[[",1)
+    res <- sapply(strsplit(x,":"),"[[",2)
+    tot_reads <- gsub(".*:| ","",sapply(strsplit(z, "\t"),"[[",2))
+    n_aligned_reads <- gsub(" |\\(.*\\)","",res)
+    perc_aligned_reads <- gsub(".*\\(|\\)|%","",res)
+    
+    df <- data.frame("sample" = gsub(".bsmap.log","",basename(y))
+                     , tot_reads
+                     , n_aligned_reads
+                     , perc_aligned_reads)
+    
+    return(df)
+  } 
+  
+  if(length(bsmaplog)>1) {
+    df <- lapply(bsmaplog, get_stats)
+    df <- do.call(rbind, df)
+  } else {
+    df <- get_stats(bsmaplog)
+  }
+  rownames(df) <- NULL
+  return(df)
+}
