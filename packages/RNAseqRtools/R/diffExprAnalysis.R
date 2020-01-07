@@ -368,6 +368,7 @@ getDEgsigned <- function(deg, signed=(-1))
   return(x[gene.idx,])
 }
 
+# keep for compatibility, to be deprecated
 plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
 {
   fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
@@ -415,6 +416,86 @@ plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
       show.legend = F
     ) +
     guides(col = guide_legend(nrow = 2))
+  
+  return(p)
+}
+
+plotDiffExprRes <- function(de
+                            , type = "volcano" # volcano, MA
+                            , lfcTh = 1
+                            , pvTh = 0.05
+                            , top = 5
+                            , gtitle = NULL
+                            , pal = NULL
+                            , label_selection = NULL)
+{
+  if(is.null(pal)) pal <- c('#004C99','#404040','#CC0000')
+  
+  fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
+  pvIdx <- grep("adj.P.Val|FDR|pvalue", colnames(de), value = T)
+  cIdx <- grep("baseMean|logCPM", colnames(de), value = T)
+  tmp   <- de[,c(cIdx,fcIdx,pvIdx)]
+  colnames(tmp) <- c("meanc","lfc","padj")
+  tmp$status <- "none"
+  tmp$status[which(tmp$lfc>=lfcTh & tmp$padj<=pvTh)] <- "Up-regulated"
+  tmp$status[which(tmp$lfc<=(-lfcTh) & tmp$padj<=pvTh)] <- "Down-regulated"
+  tmp$status <- factor(tmp$status)
+  
+  topUP <- tmp[tmp[,'status']=="Up-regulated",]
+  nup <- nrow(topUP)
+  topDW <- tmp[tmp[,'status']=="Down-regulated",]
+  ndw <- nrow(topDW)
+  
+  if(!is.null(label_selection)) {
+    tmp$lab <- rownames(tmp)
+    tmp$lab[-which(rownames(tmp)%in%label_selection)] <- ""
+    
+  } else if(!is.null(top)) {
+    topUP <- rownames(topUP[1:top,])
+    topDW <- rownames(topDW[1:top,])
+      
+    tmp$lab <- rownames(tmp)
+    tmp$lab[-which(rownames(tmp)%in%c(topDW, topUP))] <- ""
+  } else {
+    tmp$lab <- ""
+  }
+        
+  
+  if(type=="volcano") {
+    p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=1, alpha=0.6) + theme_bw() +
+      geom_hline(yintercept = -log10(pvTh), linetype = 'dashed', lwd = 0.25) + 
+      geom_vline(xintercept = lfcTh, linetype = 'dashed', lwd = 0.25) +
+      geom_vline(xintercept = -lfcTh, linetype = 'dashed', lwd = 0.25) +
+      xlab("logFC") + ylab("adjusted P-value") +
+      theme_bw() + my_theme_2 + ggtitle(gtitle) +
+      scale_color_manual(values = pal) +
+      ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
+      geom_label(
+        data    = subset(tmp, status=="Up-regulated"),
+        mapping = aes(x = max(tmp$lfc)-1.5, y = max(-log10(tmp$padj))-30, label = nup, col = status),
+        size = 2,
+        show.legend = F
+      ) +
+      geom_label(
+        data    = subset(tmp, status=="Down-regulated"),
+        mapping = aes(x = min(tmp$lfc)+1.5, y = max(-log10(tmp$padj))-20, label = ndw, col = status),
+        size = 2,
+        show.legend = F
+      ) +
+      guides(col = guide_legend(nrow = 2))
+  } else if(type=="MA") {
+    if(cIdx=="baseMean") tmp$meanc <- log2(tmp$meanc)
+    p0 <- ggplot(data = tmp, aes(x=meanc, y=lfc, col=status, label=lab)) + geom_point(data=subset(tmp, status=="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=1, alpha = 0.5)
+    p1 <- geom_point(data= subset(tmp, status!="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=1, alpha = 0.9)
+  
+    p <- p0 + p1 + theme_bw() +
+      geom_hline(yintercept = 0, linetype = 'dashed', lwd = 0.25) + 
+      ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
+      ylab("logFC") + xlab("mean normalized counts") +
+      theme_bw() + my_theme_2 + ggtitle(gtitle) +
+      scale_color_manual(values = pal) +
+      guides(col = guide_legend(nrow = 2))
+  }
   
   return(p)
 }
@@ -766,7 +847,8 @@ calculateDiffExprDESeq2 <- function(counts
                                     , contrast_tests = NULL
                                     , fcth           = NULL
                                     , pvth           = NULL
-                                    , outfile        = NULL) 
+                                    , outfile        = NULL
+                                    , ...) 
 {
   message("[*] Run DESeq2 for Differential Expression Analysis")
   m           <- counts[,rownames(info_analysis)]
@@ -776,7 +858,7 @@ calculateDiffExprDESeq2 <- function(counts
   dds <- DESeq2::DESeqDataSetFromMatrix(countData = m,
                                         colData   = info_analysis,
                                         design    = as.formula(design_formula))
-  dds <- DESeq2::DESeq(dds)
+  dds <- DESeq2::DESeq(dds, ...)
   
   if(!is.null(contrast_tests)) {
     res <- list()

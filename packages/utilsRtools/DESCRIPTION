@@ -22,7 +22,8 @@ Depends:
     ggpubr,
     ggsci,
     grid,
-    scales
+    scales,
+    ComplexHeatmap
 Imports:
     VennDiagram
 License: MIT + file LICENSE
