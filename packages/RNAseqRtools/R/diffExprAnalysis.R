@@ -427,12 +427,17 @@ plotDiffExprRes <- function(de
                             , top = 5
                             , gtitle = NULL
                             , pal = NULL
-                            , label_selection = NULL)
+                            , label_selection = NULL
+                            , corrected_pval = T)
 {
   if(is.null(pal)) pal <- c('#004C99','#404040','#CC0000')
   
   fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
-  pvIdx <- grep("adj.P.Val|FDR|pvalue", colnames(de), value = T)
+  if(corrected_pval) {
+    pvIdx <- grep("adj.P.Val|FDR|padj", colnames(de), value = T)
+  } else {
+    pvIdx <- grep("pvalue", colnames(de), value = T)
+  }
   cIdx <- grep("baseMean|logCPM", colnames(de), value = T)
   tmp   <- de[,c(cIdx,fcIdx,pvIdx)]
   colnames(tmp) <- c("meanc","lfc","padj")
