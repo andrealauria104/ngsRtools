@@ -31,8 +31,15 @@ echo ""
 echo "[+] Checking and installing dependencies ..."
 echo ""
 ${WD}/scripts/install-dependencies.r
-echo "[+] All dependencies are correctly solved."
-echo ""
+
+if [ $? -ne 0 ]; then
+  echo "  [!] Error installing dependencies."
+	exit 1
+else 
+  echo "  [+] All dependencies are correctly solved."
+  echo ""
+fi
+
 # 2. Build utils-dependency ---
 makeRtools ${WD}/packages/utilsRtools
 
