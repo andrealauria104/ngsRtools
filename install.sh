@@ -23,10 +23,20 @@ makeRtools () {
 	fi
 }
 
-# 1. Build utils-dependency ---
+
+echo ""
+echo "=== ngsRtools installation script ==="
+echo ""
+# 1. Install dependencies ---
+echo "[+] Checking and installing dependencies ..."
+echo ""
+${WD}/scripts/install-dependencies.r
+echo "[+] All dependencies are correctly solved."
+echo ""
+# 2. Build utils-dependency ---
 makeRtools ${WD}/packages/utilsRtools
 
-# 2. Build others ---
+# 3. Build others ---
 for P in $PKGS
 do
 	makeRtools ${WD}/packages/${P}
