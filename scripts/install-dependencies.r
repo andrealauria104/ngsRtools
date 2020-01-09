@@ -4,6 +4,9 @@
 #
 # Install dependencies ----
 #
+# 0. Resources ----
+CRAN <- "https://cran.rstudio.com/"
+#
 # 1. CRAN ----
 cran_pkgs <- c( 'xlsx', 'ggplot2','ggrepel','reshape2', 'RColorBrewer',
                 'circlize', 'plyr', 'ggpubr','ggsci','grid','scales',
@@ -12,10 +15,10 @@ cran_pkgs <- c( 'xlsx', 'ggplot2','ggrepel','reshape2', 'RColorBrewer',
 
 cran_not_installed <- cran_pkgs[which(!cran_pkgs %in% rownames(installed.packages()))]
 
-if(length(cran_not_installed)>0) lapply(cran_not_installed, install.packages)
+if(length(cran_not_installed)>0) lapply(cran_not_installed, install.packages, repos = CRAN)
 
 # 2. Bioconductor ----
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager", repos = CRAN)
 
 bioconductor_pkgs <- c('ComplexHeatmap','Biostrings','GenomicRanges','genomation',
                        'BiocGenerics', 'scater', 'scran', 'SC3', 'monocle',
