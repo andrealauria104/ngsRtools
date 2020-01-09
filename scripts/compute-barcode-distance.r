@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript --vanilla
+#!/usr/bin/env Rscript
 # Command line/Env variables ---
 suppressWarnings(suppressMessages(require(docopt)))
 'Usage:
@@ -67,8 +67,6 @@ write_to_file <- function(x, output, append = T)
 
 message("[*] Barcode distance calculator [*]")
 # 1. Read Sample Sheets ----
-# sheetfile <- "/Users/andrealauria/Documents/NGS/SampleSheet_OliLab_20200102.xlsx"
-
 message(" -- reading data from: ", sheetfile)
 
 singlesheet <- read_sheetfile(sheetfile, sheetName = "single", startRow = singlestart)
