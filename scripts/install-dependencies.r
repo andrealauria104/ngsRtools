@@ -28,3 +28,11 @@ bioconductor_pkgs <- c('ComplexHeatmap','Biostrings','GenomicRanges','genomation
 bioconductor_not_installed <- bioconductor_pkgs[which(!bioconductor_pkgs %in% rownames(installed.packages()))]
 
 if(length(bioconductor_not_installed)>0) lapply(bioconductor_not_installed, BiocManager::install)
+
+# 3. Check installed packages ----
+cran_not_installed <- cran_pkgs[which(!cran_pkgs %in% rownames(installed.packages()))]
+bioconductor_not_installed <- bioconductor_pkgs[which(!bioconductor_pkgs %in% rownames(installed.packages()))]
+
+if(length(cran_not_installed)>0 || length(bioconductor_not_installed)>0) {
+  stop(message("[!] Some packages were not successfully installed."))
+}
