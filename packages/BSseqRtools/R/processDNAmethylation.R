@@ -121,6 +121,21 @@ plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
   return(bars)
 }
 
+plot_coverage_stats <- function(m)
+{
+  if(grepl('methyl', class(m))) {
+    cvstats <- getData(m)[,grep('coverage', colnames(m))]
+    colnames(cvstats) <- m@sample.ids
+  } else {
+    cvstats <- m
+  }
+  cvstats <- reshape2::melt(cvstats, variable.name = "sample", value.name = "coverage") 
+  pcvstats <- ggplot(cvstats, aes(x = coverage)) + facet_wrap(~sample, ncol = 2) +
+    geom_histogram() + scale_x_log10() + xlab("Coverage Depth") + ylab("CG count") +
+    theme_bw() + my_theme_2
+  return(pcvstats)
+}
+
 plot_methratio_v2 <- function(mtr
                               , type='boxplot' # violin, bar, density, histogram
                               , pal = NULL
@@ -161,7 +176,7 @@ plot_methratio_v2 <- function(mtr
   }
   
   
-  if(any(grepl("_rep_+\\d+|_replicate_", unique(mtratio$sample))) & !(type%in%c("density","histogram"))){
+  if(any(grepl("_rep_+\\d+|_replicate_", unique(mtratio$sample))) && !(type%in%c("density","histogram"))){
     
     mtratio$tmp <- mtratio$condition
     mtratio$condition <- mtratio$sample
@@ -170,7 +185,7 @@ plot_methratio_v2 <- function(mtr
     mtratio$tmp <- NULL
     mtratio$condition <- gsub("_","-",mtratio$condition)
     
-  } else if(type%in%c("density","histogram")) {
+  } else if(any(grepl("_rep_+\\d+|_replicate_", unique(mtratio$sample))) && type%in%c("density","histogram")) {
     stop(message("[!] Please provide average values for density/histogram plots with replicates."))
   }
   
