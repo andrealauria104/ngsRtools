@@ -73,14 +73,12 @@ getGO_v2 <- function(geneList
                      , ...)
 {
   if(species=='mm') {
-    require(org.Mm.eg.db)
-    db <- org.Mm.eg.db
-    
-  } else if(species=='hg') {
-    require(org.Hs.eg.db)
-    db <- org.Hs.eg.db
-    
-  } 
+    db <- org.Mm.eg.db::org.Mm.eg.db
+  } else if(species=='hs') {
+    db <- org.Hs.eg.db::org.Hs.eg.db
+  } else {
+    stop(message("[!] Provide a valid organism (available: mm/hs)."))
+  }
   
   if(is.null(ont)) ont <- "BP"
   
