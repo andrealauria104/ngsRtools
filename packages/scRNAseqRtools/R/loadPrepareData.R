@@ -85,7 +85,7 @@ build_expression_matrix <- function(path_quant, path_qc_cells
     
     colnames(m) <- gsub("_trimmed","",colnames(m))
     m <- m[, qc_cells$sample]
-    c.idx <- grep("NA|EMPTY|Minibulk|x", colnames(m), invert = T)
+    c.idx <- grep("NA|EMPTY|Minibulk|MINIBULK|x", colnames(m), invert = T)
     m <- m[, c.idx]
     if(rm.ne) m <- m[rowSums(m > 0) > 0,]
   }

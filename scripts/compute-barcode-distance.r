@@ -2,15 +2,16 @@
 # Command line/Env variables ---
 suppressWarnings(suppressMessages(require(docopt)))
 'Usage:
-   compute-barcode-distance.r [-f <sheetfile> -s <sstart> -d <dstart> -o <output>]
+   compute-barcode-distance.r [-f <sheetfile> -s <sstart> -d <dstart> -m <maxdist> -o <output>]
 
 Options:
    -f, --sheetfile Path to sheetfile (excel workbook) or 2-column table with sample-barcode list (.txt) 
    -s, --sstart Single index sheet start row [default: 1]
    -d, --dstart Double index sheet start row [default: 1]
+   -m, --maxdist Check collisions up to max distance [default: 2]
    -o, --output Output file [default: none]
 
- ]' -> doc
+Author: Andrea Lauria' -> doc
 
 opts <- docopt(doc)
 if(is.null(opts$sheetfile)) {
@@ -19,8 +20,9 @@ if(is.null(opts$sheetfile)) {
 }
 
 sheetfile   <- as.character(opts$sheetfile)
-singlestart <- as.numeric(opts$sstart)
-doublestart <- as.numeric(opts$dstart)
+singlestart <- as.integer(opts$sstart)
+doublestart <- as.integer(opts$dstart)
+mdist       <- as.integer(opts$maxdist)
 output      <- as.character(opts$output)
 # 0. Resources ----
 # packages
@@ -35,7 +37,9 @@ read_sheetfile <- function(sheetfile, sheetName, startRow)
         suppressWarnings(read.xlsx(sheetfile, sheetName = sheetName, startRow = startRow, stringsAsFactors = F))
       } else if(grepl("\\.txt", sheetfile)) {
         read.delim2(sheetfile, header = T, stringsAsFactors = F)
-      }
+      } else if(grepl("\\.csv", sheetfile)) {
+        read.delim2(sheetfile, header = T, stringsAsFactors = F, sep = ",")
+      } 
     }, 
     error = function(e) {
       message(e)
@@ -57,7 +61,7 @@ calc_allowed_mismatches <- function(x)
   } else if(x>=5) {
     return(2) 
   } else if(x==0) {
-    return("none, exact barcode collision!") 
+    return("demultiplexing error, exact barcode collision!") 
   }
 }
 write_to_file <- function(x, output, append = T) 
@@ -67,6 +71,7 @@ write_to_file <- function(x, output, append = T)
 
 message("[*] Barcode distance calculator [*]")
 # 1. Read Sample Sheets ----
+
 message(" -- reading data from: ", sheetfile)
 
 singlesheet <- read_sheetfile(sheetfile, sheetName = "single", startRow = singlestart)
@@ -87,14 +92,16 @@ if(exists("doublesheet")) {
 cat("\n")
 d <- calculate_string_distance(index_comb, sub.method = "trim")
 d <- unlist(d)
-x <- d[which(d==min(d))]
+
+x <- d[which(d<=mdist)]
 
 message("\n -- minimum index distance = ", min(d))
 message(" -- maximum allowed mismatches = ", calc_allowed_mismatches(min(d)))
 
 # check collapsing indexes
 
-if(min(d)<3){
+if(min(d)<=mdist){
+  
   message("\n -- check collapsing index combinations, total = ",length(x))
   for(i in names(x)) {
     cat("\n")
@@ -103,15 +110,22 @@ if(min(d)<3){
       print(doublesheet[match(strsplit(i,"\\-")[[1]][1],doublesheet$index),])
       print(singlesheet[match(strsplit(i,"\\-")[[1]][2],singlesheet$index),])
     } else {
-      print(singlesheet[match(strsplit(i,"\\-")[[1]][1],singlesheet$index),])
-      print(singlesheet[match(strsplit(i,"\\-")[[1]][2],singlesheet$index),])
+      index_1 <- strsplit(i,"\\-")[[1]][1]
+      index_2 <- strsplit(i,"\\-")[[1]][2]
+      if(index_1!=index_2) {
+        print(singlesheet[match(index_1,singlesheet$index),])
+        print(singlesheet[match(index_2,singlesheet$index),])
+      } else if(index_1 == index_2) {
+        print(singlesheet[grep(index_1, singlesheet$index),])
+      }
+   
     }
   }
   cat("\n")
 }
 
 # 4. [Optional] Write output to file ----
-if(output!='none' && min(d)<3) {
+if(output!='none' && min(d)<=mdist) {
   
   message("\n -- writing to file = ", output,"\n")
   
@@ -129,8 +143,17 @@ if(output!='none' && min(d)<3) {
     } else {
       # single
       write_to_file(colnames(singlesheet), output)
-      write_to_file(as.character(singlesheet[match(strsplit(i,"\\-")[[1]][1],singlesheet$index),]), output)
-      write_to_file(as.character(singlesheet[match(strsplit(i,"\\-")[[1]][2],singlesheet$index),]), output)
+      
+      index_1 <- strsplit(i,"\\-")[[1]][1]
+      index_2 <- strsplit(i,"\\-")[[1]][2]
+      if(index_1!=index_2) {
+        write_to_file(as.character(singlesheet[match(index_1,singlesheet$index),]), output)
+        write_to_file(as.character(singlesheet[match(index_2,singlesheet$index),]), output)
+      } else if(index_1 == index_2) {
+        write_to_file(as.character(singlesheet[grep(index_1, singlesheet$index),][1,]), output)
+        write_to_file(as.character(singlesheet[grep(index_1, singlesheet$index),][2,]), output)
+      }
+
     }
   }
 }

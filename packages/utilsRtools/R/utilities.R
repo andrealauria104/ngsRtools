@@ -186,3 +186,8 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
   y[x > (qnt[2] + H)] <- NA
   y
 }
+
+# Cbind multiple matrix/data frame, matching by row ----
+mbind <- function(...){
+  Reduce( function(x,y){cbind(x,y[match(row.names(x),row.names(y)),])}, list(...) )
+  }
