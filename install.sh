@@ -25,7 +25,9 @@ makeRtools () {
 
 
 echo ""
+echo "====================================="
 echo "=== ngsRtools installation script ==="
+echo "====================================="
 echo ""
 # 1. Install dependencies ---
 echo "[+] Checking and installing dependencies ..."

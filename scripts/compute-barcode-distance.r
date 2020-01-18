@@ -185,6 +185,7 @@ if(output!='none' && min(d)<=mdist) {
     }
     write_to_file("", output = output)
   }
+  rm(index_1, index_2)
 }
 
 message("\n ... done! \n")

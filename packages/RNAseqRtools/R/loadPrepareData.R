@@ -48,7 +48,10 @@ process_rnaseq_edger <- function(m
                                  , filter.expr.th = 1
                                  , filter.sample.th = 2
                                  , normalize.using = "cpm"
-                                 , tlen = NULL)
+                                 , norm.fact.method = "TMM"
+                                 , normalized.lib.sizes = TRUE
+                                 , tlen = NULL
+                                 , ...)
 {
   
   message(" -- Pre-process RNA-seq data using edgeR")
@@ -62,9 +65,9 @@ process_rnaseq_edger <- function(m
   }
   
   message(" -- Condition: ", paste0(levels(group), collapse = "-"))
-  
   y <- edgeR::DGEList(counts=m, genes=rownames(m), group = group)
-  y <- edgeR::calcNormFactors(y)
+  message(" -- Normalization factors, method = ", norm.fact.method)
+  y <- edgeR::calcNormFactors(y, norm.fact.method =  norm.fact.method, ...)
   
   # Clean environment
   rm(m)
@@ -84,9 +87,9 @@ process_rnaseq_edger <- function(m
       fs <- floor(ncol(y)*filter.sample.th)
     }
     if(normalize.using == "cpm") {
-      keep <- rowSums(edgeR::cpm(y)>filter.expr.th) >= fs  
+      keep <- rowSums(edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)>filter.expr.th) >= fs  
     } else if (normalize.using == "rpkm") {
-      keep <- rowSums(edgeR::rpkm(y, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
+      keep <- rowSums(edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes)>filter.expr.th) >= fs  
     } else {
       stop(message("[!] Incorrect normalization method (cpm, rpkm)."))
     }
@@ -95,14 +98,14 @@ process_rnaseq_edger <- function(m
   }
   
   if(normalize.using == "cpm") {
-    y$CPM    <- edgeR::cpm(y)
-    y$logCPM <- edgeR::cpm(y, log = T)
+    y$CPM    <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)
+    y$logCPM <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes, log = T)
   } else if (normalize.using == "rpkm") {
     if(is.null(tlen)) {
       stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
     }
-    y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = T)
-    y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = T, log = T)
+    y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes)
+    y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes, log = T)
   }
   
   return(y)
@@ -116,7 +119,10 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
                                , filter.expr.th = 1
                                , filter.sample.th = 2
                                , normalize.using = "cpm"
-                               , tlen = NULL)
+                               , norm.fact.method = "TMM"
+                               , normalized.lib.sizes = TRUE
+                               , tlen = NULL
+                               , ...)
 {
   
   message(" -- Pre-process RNA-seq data using edgeR")
@@ -143,7 +149,8 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
   
   message(" -- Condition: ", paste0(levels(y$samples$group), collapse = "-"))
   
-  y <- edgeR::calcNormFactors(y)
+  message(" -- Normalization factors, method = ", norm.fact.method)
+  y <- edgeR::calcNormFactors(y, norm.fact.method =  norm.fact.method, ...)
   
   # Clean environment
   rm(m)
@@ -163,12 +170,12 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
       fs <- floor(ncol(m)*filter.sample.th)
     }
     if(normalize.using == "cpm") {
-      keep <- rowSums(edgeR::cpm(y)>filter.expr.th) >= fs  
+      keep <- rowSums(edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)>filter.expr.th) >= fs  
     } else if (normalize.using == "rpkm") {
       if(is.null(tlen)) {
         stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
       }
-      keep <- rowSums(edgeR::rpkm(y, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
+      keep <- rowSums(edgeR::rpkm(y, normalized.lib.sizes = normalized.lib.sizes, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
     } else {
       stop(message("[!] Incorrect normalization method (cpm, rpkm)."))
     }
@@ -177,14 +184,14 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
   }
   
   if(normalize.using == "cpm") {
-    y$CPM    <- edgeR::cpm(y)
-    y$logCPM <- edgeR::cpm(y, log = T)
+    y$CPM    <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)
+    y$logCPM <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes, log = T)
   } else if (normalize.using == "rpkm") {
     if(is.null(tlen)) {
       stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
     }
-    y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = T)
-    y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = T, log = T)
+    y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes)
+    y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes, log = T)
   }
   
   return(y)

@@ -428,7 +428,8 @@ plotDiffExprRes <- function(de
                             , gtitle = NULL
                             , pal = NULL
                             , label_selection = NULL
-                            , corrected_pval = T)
+                            , corrected_pval = T
+                            , point.size = 0.5)
 {
   if(is.null(pal)) pal <- c('#004C99','#404040','#CC0000')
   
@@ -467,7 +468,7 @@ plotDiffExprRes <- function(de
         
   
   if(type=="volcano") {
-    p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=1, alpha=0.6) + theme_bw() +
+    p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=point.size, alpha=0.6) + theme_bw() +
       geom_hline(yintercept = -log10(pvTh), linetype = 'dashed', lwd = 0.25) + 
       geom_vline(xintercept = lfcTh, linetype = 'dashed', lwd = 0.25) +
       geom_vline(xintercept = -lfcTh, linetype = 'dashed', lwd = 0.25) +
@@ -490,8 +491,8 @@ plotDiffExprRes <- function(de
       guides(col = guide_legend(nrow = 2))
   } else if(type=="MA") {
     if(cIdx=="baseMean") tmp$meanc <- log2(tmp$meanc)
-    p0 <- ggplot(data = tmp, aes(x=meanc, y=lfc, col=status, label=lab)) + geom_point(data=subset(tmp, status=="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=1, alpha = 0.5)
-    p1 <- geom_point(data= subset(tmp, status!="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=1, alpha = 0.9)
+    p0 <- ggplot(data = tmp, aes(x=meanc, y=lfc, col=status, label=lab)) + geom_point(data=subset(tmp, status=="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=point.size, alpha = 0.5)
+    p1 <- geom_point(data= subset(tmp, status!="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=point.size, alpha = 0.9)
   
     p <- p0 + p1 + theme_bw() +
       geom_hline(yintercept = 0, linetype = 'dashed', lwd = 0.25) + 
