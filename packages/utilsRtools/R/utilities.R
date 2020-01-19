@@ -190,4 +190,15 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
 # Cbind multiple matrix/data frame, matching by row ----
 mbind <- function(...){
   Reduce( function(x,y){cbind(x,y[match(row.names(x),row.names(y)),])}, list(...) )
-  }
+}
+
+# Histogram ----
+calc_binwidth <- function(x, rule = 'Freedman-Diaconis') 
+{
+  rules <- list(
+    'Freedman-Diaconis' = function(x) (2 * IQR(x) / length(x)^(1/3)),
+    'Scott' = function(x) (3.5 * sd(x) / length(x)^(1/3))
+  )
+  
+  return(rules[[rule]](x))
+}

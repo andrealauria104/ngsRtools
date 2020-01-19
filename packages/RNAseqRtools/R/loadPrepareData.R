@@ -67,8 +67,8 @@ process_rnaseq_edger <- function(m
   message(" -- Condition: ", paste0(levels(group), collapse = "-"))
   y <- edgeR::DGEList(counts=m, genes=rownames(m), group = group)
   message(" -- Normalization factors, method = ", norm.fact.method)
-  y <- edgeR::calcNormFactors(y, norm.fact.method =  norm.fact.method, ...)
-  
+  y <- edgeR::calcNormFactors(y, method =  norm.fact.method, ...)
+  if(!normalized.lib.sizes) warning("Normalization factors are ignored in RPKM/CPM calculation. Avoid between samples comparisons!")
   # Clean environment
   rm(m)
   gc(verbose = F)
@@ -150,8 +150,8 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
   message(" -- Condition: ", paste0(levels(y$samples$group), collapse = "-"))
   
   message(" -- Normalization factors, method = ", norm.fact.method)
-  y <- edgeR::calcNormFactors(y, norm.fact.method =  norm.fact.method, ...)
-  
+  y <- edgeR::calcNormFactors(y, method =  norm.fact.method, ...)
+  if(!normalized.lib.sizes) warning("Normalization factors are ignored in RPKM/CPM calculation. Avoid between samples comparisons!")
   # Clean environment
   rm(m)
   gc(verbose = F)
