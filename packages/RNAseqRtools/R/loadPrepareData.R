@@ -138,6 +138,18 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
       if(!is.factor(group))   group <- as.factor(group)
       if(!is.null(reference)) group <- relevel(group, reference)
     }
+  } else {
+    # group as single or combination of columns in experimental info
+    # provide as integer, character
+    if(!is.null(group)) {
+     if(length(group)==1) {
+       group <- experimental_info[,group]  
+     } else {
+       group <- apply(experimental_info[,group], 1, paste0, collapse = "_")
+     }
+      if(!is.factor(group))   group <- as.factor(group)
+      if(!is.null(reference)) group <- relevel(group, reference)
+    }
   }
   
   if(is.null(gene_info)) gene_info <- rownames(m)

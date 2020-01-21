@@ -163,11 +163,13 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   get_contrast <- function(contrast, design)
   {
     if(is.character(contrast) & length(contrast) == 3) {
-      
-      contrast <- limma::makeContrasts(paste0(contrast[1], contrast[-1], collapse = "-"), levels = design)
-      
-    } 
-    return(contrast)
+      cnm <- paste0(contrast[1], contrast[-1], collapse = "-")
+      mcontrast <- limma::makeContrasts(contrasts = cnm, levels = design)
+      return(mcontrast)  
+    } else {
+      return(contrast)
+    }
+    
   }
   message("[*] Run edgeR for Differential Expression Analysis")
   
@@ -231,8 +233,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
       lrt <- edgeR::glmLRT(fit, coef=cf)
     } else {
       # GLM with contrasts
-      contrast <- get_contrast(contrast = contrast, design = design)
-      lrt <- edgeR::glmLRT(fit, contrast = contrast)
+      mcontrast <- get_contrast(contrast = contrast, design = design)
+      lrt <- edgeR::glmLRT(fit, contrast = mcontrast)
     }
     de  <- edgeR::topTags(lrt, n = Inf)
     
@@ -244,8 +246,10 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
       qlf <- edgeR::glmQLFTest(fit, coef=cf)
     } else {
       # GLM with contrasts
-      contrast <- get_contrast(contrast = contrast, design = design)
-      qlf <- edgeR::glmQLFTest(fit, contrast = contrast)
+      print(contrast)
+      mcontrast <- get_contrast(contrast = contrast, design = design)
+      print(mcontrast)
+      qlf <- edgeR::glmQLFTest(fit, contrast = mcontrast)
     }
     de  <- edgeR::topTags(qlf, n = Inf)
     
