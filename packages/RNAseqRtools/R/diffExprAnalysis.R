@@ -164,6 +164,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   {
     if(is.character(contrast) & length(contrast) == 3) {
       cnm <- paste0(contrast[1], contrast[-1], collapse = "-")
+      message(" -- Contrast: ", cnm)
       mcontrast <- limma::makeContrasts(contrasts = cnm, levels = design)
       return(mcontrast)  
     } else {
@@ -246,9 +247,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
       qlf <- edgeR::glmQLFTest(fit, coef=cf)
     } else {
       # GLM with contrasts
-      print(contrast)
       mcontrast <- get_contrast(contrast = contrast, design = design)
-      print(mcontrast)
       qlf <- edgeR::glmQLFTest(fit, contrast = mcontrast)
     }
     de  <- edgeR::topTags(qlf, n = Inf)
