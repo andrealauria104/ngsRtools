@@ -98,7 +98,7 @@ getGO_v2 <- function(geneList
   }
   
   if(simplify) {
-    ego <- simplify(ego)
+    ego <- clusterProfiler::simplify(ego)
   }
   
   return(ego)
