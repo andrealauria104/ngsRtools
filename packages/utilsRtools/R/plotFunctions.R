@@ -131,7 +131,7 @@ plot_venn_diagram <- function(vd_list
     , cat.cex = .6
     , cat.default.pos = "outer"
     , cat.dist = 0.1
-    , rotation = 1
+    # , rotation = 1
     , ... )
   
   if( !is.null(outfig) ) {
