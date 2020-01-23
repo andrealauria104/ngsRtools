@@ -9,6 +9,7 @@ get_heatmap3 <- function(m
                          , myZscale = NULL
                          , myLegend = NULL
                          , scale = T
+                         , text_size = 8
                          , ...){
   
   base_mean <- rowMeans(m)
@@ -35,12 +36,12 @@ get_heatmap3 <- function(m
     if (!is.null(annotCol)) {
       ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
                                                      col = annotCol, 
-                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=8),
-                                                                                    values_gp = gpar(fontsize=8)))
+                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
+                                                                                    labels_gp = gpar(fontsize=text_size)))
     } else {
       ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
-                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=8),
-                                                                                    values_gp = gpar(fontsize=8)))
+                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
+                                                                                    labels_gp = gpar(fontsize=text_size)))
     }
   } else {
     ha_column <- new("HeatmapAnnotation")
@@ -51,15 +52,16 @@ get_heatmap3 <- function(m
   hm <- ComplexHeatmap::Heatmap(m_scaled, col = ramp,
                                 # show_row_dend = T,
                                 # row_names_side = "left",
-                                # row_names_gp = gpar(fontsize=8),
-                                column_names_gp = gpar(fontsize=8),
+                                row_names_gp = gpar(fontsize=text_size),
+                                column_names_gp = gpar(fontsize=text_size),
                                 column_title_gp = gpar(fontsize=10, fontface="bold"),
                                 heatmap_legend_param = list(title = paste0("Z-score (",myLegend,")"),
-                                                            title_gp = gpar(fontsize=8),
+                                                            title_gp = gpar(fontsize=text_size),
                                                             title_position = "topcenter",
                                                             legend_width  = unit(3, "cm"),
                                                             legend_height = unit(0.5, "mm"),
-                                                            values_gp     = gpar(fontsize=8),
+                                                            values_gp     = gpar(fontsize=text_size),
+                                                            labels_gp     = gpar(fontsize=text_size),
                                                             # legend_direction = "vertical"
                                                             legend_direction = "horizontal"
                                 )
@@ -72,11 +74,19 @@ get_heatmap3 <- function(m
     bmramp <- circlize::colorRamp2(c(bmscale[1],bmscale[3],bmscale[5]), bPalette(3))
     bmh <- ComplexHeatmap::Heatmap(base_mean 
                                    # , name = "Mean Expression"
-                                   , column_names_gp = gpar(fontsize=8)
+                                   , column_names_gp = gpar(fontsize=text_size)
                                    , show_row_names = FALSE
                                    , width = unit(3, "mm") 
                                    , col = bmramp
-                                   , heatmap_legend_param = list(title = paste0("Average ",myLegend),title_gp = gpar(fontsize=8)))
+                                   , heatmap_legend_param = list(title = paste0("Average ",myLegend)
+                                                                 ,title_gp = gpar(fontsize=text_size),
+                                                                 title_position = "topcenter",
+                                                                 legend_width  = unit(3, "cm"),
+                                                                 legend_height = unit(0.5, "mm"),
+                                                                 values_gp     = gpar(fontsize=text_size),
+                                                                 labels_gp     = gpar(fontsize=text_size),
+                                                                 # legend_direction = "vertical"
+                                                                 legend_direction = "horizontal"))
     
     hmOut <- hm + bmh
   } else {
@@ -119,8 +129,6 @@ plot_cluster_expression <- function(m, cl, pal)
   toplot$state <- gsub("/.*","",as.character(toplot$sample))
   toplot$cond  <- gsub(".*/| #.*","",as.character(toplot$sample))
   
-  # toplot$sample <- factor(toplot$sample, levels = c("mES/WT #1","mES/WT #2","mES/3BKO #1","mES/3BKO #2"
-  #                                                   ,"EpiSC/WT #1","EpiSC/WT #2","EpiSC/3BKO #1","EpiSC/3BKO #2") )
   toplot$cluster <- gsub("_"," ", toplot$cluster)
   p <- ggplot(toplot, aes(x=sample, y=log2_av_tpm, fill = cond)) + 
     geom_boxplot(notch = T, outlier.colour = "grey", outlier.size = 0.2, outlier.alpha = 0.5) +

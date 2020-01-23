@@ -1,45 +1,49 @@
 # Gene Ontology ====
-getGO <- function(x, reg="UP", ORGANISM = "mmusculus", gl_input=T)
+getGO <- function(gene_list
+                  , ORGANISM = "mmusculus"
+                  , ordered_query = F
+                  , correction_method='fdr'
+                  , hier_filtering ='moderate'
+                  , min_set_size = 10
+                  , process = T
+                  , pvth = 0.05
+                  , ncut = NULL
+                  , ...)
 {
-  # Perform GO term enrichment using gProfileR
-  if(gl_input) {
-    gene_list <- x
-  } else {
-    if ( reg!="both") {
-      gene_list <- subset(x, regulation==reg)$symbol 
-    } else {
-      gene_list <- x$symbol
-    }
-  }
+ 
+  src_filters = c("GO:BP","GO:MF","GO:CC","KEGG",
+                 "REAC","TF","MI","CORUM","OMIM", 
+                 "HPA","HP")
   
-  gProfileR::gprofiler( gene_list,
-                        organism = ORGANISM,
-                        # custom_bg = background,
-                        max_p_value = 0.05,
-                        ordered_query =T,
-                        significant = T,
-                        correction_method='gSCS',
-                        min_set_size = 10,
-                        # evcodes=T,
-                        # exclude_iea = T,
-                        hier_filtering ='moderate',
-                        # src_filter = collections
-                        # png_fn = "Prostate/Figures/Goprofiler.AS.png"
-                        # include_graph=T
-                        src_filter = c("GO",'KEGG',"REAC","CORUM","OMIM",  "HP")
-  )
+  profileres <- lapply(src_filters, function(src)
+    {
+      gProfileR::gprofiler( gene_list,
+                            organism = ORGANISM,
+                            max_p_value = 0.05,
+                            ordered_query = ordered_query,
+                            significant = F,
+                            correction_method = correction_method,
+                            min_set_size = min_set_size,
+                            hier_filtering = hier_filtering,
+                            src_filter = src,
+                            ... )}
+    )
+  names(profileres) <- src_filters
   
+  if(process) profileres <- lapply(profileres, processGO, pvth = pvth, ncut = ncut)
+  
+  return(profileres)
 }
 
-processGO <- function(x, pvTh=0.05, cut=F)
+processGO <- function(x, pvth = 0.05, ncut = NULL)
 {
-  x <- subset(x, p.value<=0.05)
-  x <- x[,c("term.name", "p.value")]
+  x <- subset(x, p.value<=pvth)
+  x <- x[,c("term.id","term.name","domain","p.value","intersection")]
   if( any(duplicated(x$term.name))) x <- x[-which(duplicated(x$term.name)),]
   x$term.name <- factor(x$term.name, 
                         levels = x$term.name[order(x$p.value, decreasing = F)])
-  if(cut){
-    if(nrow(x)>25) x <- x[1:25,]
+  if(!is.null(ncut)){
+    if(nrow(x)>ncut) x <- x[1:ncut,]
   }
   x <- x[with(x, order(p.value, decreasing = F)),]
   return(x)
@@ -135,7 +139,7 @@ get_top_enrichment <- function(enrichment, top=10, ranking = "p.adjust")
   {
     if(grepl("DataFrame|data.frame",class(x))) {
       if(any(grepl("term.name",colnames(x)))) {
-        colnames(x) <- c("Description","p.adjust")
+        colnames(x)[grep("term.name|p.value",colnames(x))] <- c("Description","p.adjust")
         x$Count <- NA
       } else {
         x <- x[,c(1,4:5)] 
@@ -186,6 +190,7 @@ plot_top_enrichment <- function(top_enrichment, transpose = F, ...)
   plot.heatmap <- function(m
                            # , log_scale=F
                            , term_font_size = 8
+                           , row_names_side = "left"
                            ,...)
   {
     pal <- def.pal(...)
@@ -209,10 +214,10 @@ plot_top_enrichment <- function(top_enrichment, transpose = F, ...)
                                                                 values_gp     = gpar(fontsize=8),
                                                                 legend_direction = "horizontal") 
                                   , row_names_gp = gpar(fontsize=term_font_size)
+                                  , column_names_gp = gpar(fontsize=term_font_size)
                                   # , row_names_max_width = unit(5, "cm")
                                   # , width = unit(2,'cm')
-                                  , row_names_side = "left"
-                                  , column_names_gp = gpar(fontsize=8)
+                                  , row_names_side = row_names_side 
                                   , rect_gp = gpar(col = 'black')
                                   , na_col = 'white'
                                   # , ...
