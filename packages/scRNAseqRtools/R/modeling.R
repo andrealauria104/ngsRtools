@@ -11,7 +11,7 @@ model_variance <- function(sce
   plot_variance <- function(decomp)
   {
     p <- ggplot(as.data.frame(decomp), aes(x=mean, y=total, col=hv)) +
-      geom_point(size=1) +
+      geom_point(size=0.8, alpha=0.7) +
       geom_line(aes(y=tech), col='#CC0000') +
       theme_bw() + my_theme + scale_color_manual(values=c('black', '#0066CC')) +
       xlab("Mean - log2[CPM]") + ylab("Variance")

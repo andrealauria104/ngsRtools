@@ -6,8 +6,8 @@ suppressWarnings(suppressMessages(require(docopt)))
 
 Options:
    -f, --sheetfile Path to sheetfile (excel workbook) or 2-column table with sample-barcode list (.txt) 
-   -s, --sstart Single index sheet start row [default: 1]
-   -d, --dstart Double index sheet start row [default: 1]
+   -s, --sstart Illumina format single index sheet start row [default: 1]
+   -d, --dstart Illumina format double index sheet start row [default: 1]
    -m, --maxdist Check collisions up to max distance [default: 2]
    -v, --stdout Print results to std output [default: TRUE]
    -o, --output Output file [default: none]
@@ -143,49 +143,72 @@ if(min(d)<=mdist && stdout){
   cat("\n")
 }
 
+# report non-collapsing indexes 
+y <- d[which(d>mdist)]
+y_nm <- unique(unlist(strsplit(names(y),"\\-")))
+
+if(exists("doublesheet")) {
+  comps <- subset(singlesheet, index%in%y_nm)
+  compd <- subset(doublesheet, index%in%y_nm)
+  compatible <- cbind.data.frame(comps, compd)
+} else {
+  compatible <- subset(singlesheet,index%in%y_nm)
+}
+
+message("\n -- non collapsing index list, total = ",nrow(compatible),"\n")
+print(compatible)
+
 # 4. [Optional] Write output to file ----
 if(output!='none' && min(d)<=mdist) {
   
-  message("\n -- writing to file = ", output,"\n")
+  output <- gsub("\\..*$","",output)
+  output <- paste0(output,".txt")
+  output_collapsing <- gsub(".txt","_collapsing.txt",output)
+  output_compatible <- gsub(".txt","_compatible.txt",output)
+  
+  message("\n -- writing collapsing to file = ", output_collapsing,"\n")
   
   for(i in names(x)) {
     
     index_1 <- strsplit(i,"\\-")[[1]][1]
     index_2 <- strsplit(i,"\\-")[[1]][2]
     
-    write_to_file(paste0(i, ", distance = ", x[i]), output, append = ifelse(i == names(x)[1], F, T))
+    write_to_file(paste0(i, ", distance = ", x[i]), output_collapsing, append = ifelse(i == names(x)[1], F, T))
     if(exists("doublesheet")) {
       iid <- grep("index_[1,2]",ls(), value = T)
       for(id in iid) {
         
         if(length(grep(get(id),doublesheet$index))!=0) {
           # double --
-          write_to_file(doublesheet[grep(get(id),doublesheet$index),], output = output)  
+          write_to_file(doublesheet[grep(get(id),doublesheet$index),], output = output_collapsing)  
         }
         if(length(grep(get(id),singlesheet$index))!=0) {
           # single --
-          write_to_file(singlesheet[grep(get(id),singlesheet$index),], output = output)  
+          write_to_file(singlesheet[grep(get(id),singlesheet$index),], output = output_collapsing)  
         }
       }
       
     } else {
       # single
-      write_to_file(colnames(singlesheet), output)
+      write_to_file(colnames(singlesheet), output_collapsing)
       
       index_1 <- strsplit(i,"\\-")[[1]][1]
       index_2 <- strsplit(i,"\\-")[[1]][2]
       if(index_1!=index_2) {
-        write_to_file(as.character(singlesheet[match(index_1,singlesheet$index),]), output)
-        write_to_file(as.character(singlesheet[match(index_2,singlesheet$index),]), output)
+        write_to_file(as.character(singlesheet[match(index_1,singlesheet$index),]), output_collapsing)
+        write_to_file(as.character(singlesheet[match(index_2,singlesheet$index),]), output_collapsing)
       } else if(index_1 == index_2) {
-        write_to_file(as.character(singlesheet[grep(index_1, singlesheet$index),][1,]), output)
-        write_to_file(as.character(singlesheet[grep(index_1, singlesheet$index),][2,]), output)
+        write_to_file(as.character(singlesheet[grep(index_1, singlesheet$index),][1,]), output_collapsing)
+        write_to_file(as.character(singlesheet[grep(index_1, singlesheet$index),][2,]), output_collapsing)
       }
       
     }
-    write_to_file("", output = output)
+    write_to_file("", output = output_collapsing)
   }
   rm(index_1, index_2)
+  
+  message("\n -- writing compatible to file = ", output_compatible,"\n")
+  write.table(compatible, file = output_compatible, sep = "\t", quote = F, row.names = F, col.names = T)
 }
 
 message("\n ... done! \n")
