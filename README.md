@@ -36,16 +36,22 @@ cd ngsRtools
 ./install.sh
 ```
 This will install packages and dependencies. It will also test executability of programs in the `scripts/` folder.<br/>
-Alternatively, yuo can install individual packages, for example:
+Alternatively, yuo can install individual packages, for example typing from your R session:
 ```
+devtools::install_github("https://github.com/andrealauria104/ngsRtools", subdir="packages/RNAseqRtools")
+```
+Or from the location of you cloned repository: 
+```
+# from command linea
 R CMD INSTALL RNAseqRtools
-```
-or from R:
-```
+
+# from R
 devtools::install("RNAseqRtools")
 ```
+Warning: all packages depend from the `utilsRtools` package. If you choose to install individual packages, install it as you first.<br/> 
 To uninstall the complete suite:
 ```
 cd ngsRtools
 ./uninstall.sh
 ```
+
