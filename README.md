@@ -42,7 +42,7 @@ devtools::install_github("https://github.com/andrealauria104/ngsRtools", subdir=
 ```
 Or from the location of you cloned repository: 
 ```
-# from command linea
+# from command line
 R CMD INSTALL RNAseqRtools
 
 # from R

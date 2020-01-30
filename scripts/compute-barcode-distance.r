@@ -103,6 +103,7 @@ d <- calculate_string_distance(index_comb, sub.method = "trim")
 d <- unlist(d)
 
 x <- d[which(d<=mdist)]
+x_nm <- unique(unlist(strsplit(names(x),"\\-")))
 
 message("\n -- minimum index distance = ", min(d))
 message(" -- maximum allowed mismatches = ", calc_allowed_mismatches(min(d)))
@@ -146,11 +147,14 @@ if(min(d)<=mdist && stdout){
 # report non-collapsing indexes 
 y <- d[which(d>mdist)]
 y_nm <- unique(unlist(strsplit(names(y),"\\-")))
+y_nm <- setdiff(y_nm, x_nm)
 
 if(exists("doublesheet")) {
-  comps <- subset(singlesheet, index%in%y_nm)
-  compd <- subset(doublesheet, index%in%y_nm)
-  compatible <- cbind.data.frame(comps, compd)
+  comps <- subset(singlesheet, index%in%y_nm)[,grep("Sample.*Name|index$", colnames(singlesheet))]
+  compd <- subset(doublesheet, index%in%y_nm)[,grep("Sample.*Name|index$", colnames(doublesheet))]
+  colnames(comps) <- c("SampleName","index")
+  colnames(compd) <- c("SampleName","index")
+  compatible <- rbind.data.frame(comps, compd)
 } else {
   compatible <- subset(singlesheet,index%in%y_nm)
 }
