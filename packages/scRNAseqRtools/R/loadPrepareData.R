@@ -68,7 +68,7 @@ read_salmon_quant <- function(DATADIR
   return(counts)
 }
 
-build_expression_matrix <- function(path_quant, path_qc_cells
+build_expression_matrix <- function(path_quant, path_qc_cells = NULL
                                     , pipeline = "hisat"
                                     , measure = "counts"
                                     , rm.ne = T
@@ -84,14 +84,18 @@ build_expression_matrix <- function(path_quant, path_qc_cells
     }
     
     colnames(m) <- gsub("_trimmed","",colnames(m))
-    m <- m[, qc_cells$sample]
+    if(!is.na(qc_cells)) m <- m[, qc_cells$sample]
     c.idx <- grep("NA|EMPTY|Minibulk|MINIBULK|x", colnames(m), invert = T)
     m <- m[, c.idx]
     if(rm.ne) m <- m[rowSums(m > 0) > 0,]
   }
   
-  qc_cells <- readRDS(path_qc_cells)
-  rownames(qc_cells) <- gsub("_trimmed","",rownames(qc_cells))
+  if(!is.null(path_qc_cells)) {
+    qc_cells <- readRDS(path_qc_cells)
+    rownames(qc_cells) <- gsub("_trimmed","",rownames(qc_cells))
+  } else {
+    qc_cells <- NA
+  }
   
   m <- lapply(measure, get_quant, path_quant = path_quant, rm.ne = rm.ne, ...)
   names(m) <- measure
