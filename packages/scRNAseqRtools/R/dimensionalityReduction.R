@@ -55,11 +55,14 @@ getTSNE <- function(x
   
   p <- p0 + xlab("t-SNE 1") + ylab("t-SNE 2") +
     theme_bw() + my_theme +
+    guides(col = guide_legend(ncol=1)) + 
     theme(panel.grid = element_blank()
           , plot.title = element_text(face="bold", hjust = 0.5, size=10)
           , aspect.ratio = 1
           , strip.background = element_blank()
-          , strip.text = element_text(size = 8, face = "bold"))
+          , strip.text = element_text(size = 8, face = "bold")
+          , legend.key.size =  unit(0.5,'cm')
+          , legend.position = 'right')
   
   
   return(list("tsne" = tsne, "plot" = p))

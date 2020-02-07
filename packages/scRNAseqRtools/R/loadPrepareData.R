@@ -83,16 +83,16 @@ build_expression_matrix <- function(path_quant, path_qc_cells = NULL
       m <- read_salmon_quant(DATADIR = path_quant, measure = measure)
     }
     
-    colnames(m) <- gsub("_trimmed","",colnames(m))
-    if(!is.na(qc_cells)) m <- m[, qc_cells$sample]
-    c.idx <- grep("NA|EMPTY|Minibulk|MINIBULK|x", colnames(m), invert = T)
+    colnames(m) <- gsub("_trimmed|\\..*","",colnames(m))
+    if(is.data.frame(qc_cells)) tryCatch({m <- m[, qc_cells$sample]}, error = function(e) message(e))
+    c.idx <- grep("NA|empty|(mini|)bulk|x", colnames(m), invert = T, ignore.case = T)
     m <- m[, c.idx]
     if(rm.ne) m <- m[rowSums(m > 0) > 0,]
   }
   
   if(!is.null(path_qc_cells)) {
     qc_cells <- readRDS(path_qc_cells)
-    rownames(qc_cells) <- gsub("_trimmed","",rownames(qc_cells))
+    rownames(qc_cells) <- gsub("_trimmed|\\..*","",rownames(qc_cells))
   } else {
     qc_cells <- NA
   }

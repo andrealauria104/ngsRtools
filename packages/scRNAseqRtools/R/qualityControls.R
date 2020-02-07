@@ -28,7 +28,7 @@ read_stats <- function(DATADIR, type = 'salmon')
   } else if(type=='hisat') {
     stats   <- AlignStat(STATDIR = DATADIR)
     tmp  <- process_barcode(stats$sample)
-    tmp$sample <- NULL
+    stats$sample <- NULL
     stats <- cbind.data.frame(stats, tmp)
   }
 }
@@ -355,16 +355,18 @@ plot_hisat_stats <- function(stats, size_cutoff)
   toplot$sample <- factor(toplot$sample, levels = idx)
   toplot$variable <- factor(toplot$variable, levels = c('unmapped','multi_map','uniquely_map'))
   
-  p0 <- ggplot(toplot, aes(x = sample, y = value, fill = variable)) +
-    geom_col(col='black', size = 0.25, alpha = 0.8) + ylab("Number of Reads")
+  p0 <- ggplot(toplot, aes(x = sample, y = value, fill = variable, col = variable)) +
+    geom_col(size = 0.25, alpha = 0.9) +   
+    ylab("Number of Reads") 
+ 
   
   if(!missing(size_cutoff)) {
     p0 <- p0 +
-      geom_hline(yintercept = size_cutoff, linetype = 'dashed', col = 'red', alpha = 0.5)
+      geom_hline(yintercept = size_cutoff, linetype = 'dashed', col = 'red', alpha = 0.5, size=0.25)
   }
   p <- p0 +
-    theme_light() + my_theme + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-    scale_fill_d3()
+    theme_classic() + my_theme + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid = element_blank()) +
+    scale_fill_d3() + scale_color_d3()
   
   return(p)
 }

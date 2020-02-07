@@ -86,7 +86,10 @@ message(" -- reading data from: ", sheetfile)
 singlesheet <- read_sheetfile(sheetfile, sheetName = "single", startRow = singlestart)
 
 if(grepl("\\.xlsx", sheetfile)){
-  doublesheet <- read_sheetfile(sheetfile, sheetName = "double", startRow = doublestart)
+  wb      <- loadWorkbook(sheetfile)
+  sheets  <- names(getSheets(wb))
+  nm <- grep("double|dual", sheets)
+  doublesheet <- read_sheetfile(sheetfile, sheetName = nm, startRow = doublestart)
 } 
 
 # 2. Prepare single/double index ----
