@@ -93,9 +93,11 @@ plot_cinfo <- function(cinfo, structure, feature, pal, info_type = "absolute", m
       mp <- split(mp, mp[,structure])
       mp <- lapply(mp, function(x) {
         if(length(setdiff(refs, x$sample))>0) {
-          y <- data.frame("sample" = setdiff(refs, x$sample)
-                          , structure = x[,structure]
-                          , "relative_n_cells" = 0)
+          sname <- setdiff(refs, x$sample)
+          snum  <- length(sname)
+          y <- data.frame("sample" = sname
+                          , structure = rep(unique(x[,structure]), snum)
+                          , "relative_n_cells" = rep(0,snum))
           colnames(y)[colnames(y)=="structure"] <- structure
           x <- rbind.data.frame(x, y)
           rownames(x) <- NULL
