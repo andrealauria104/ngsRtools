@@ -20,7 +20,7 @@ Options:
 
 opts <- docopt(doc)
 if(is.null(opts$qcmatrix) || is.null(opts$metadata)) {
-  message("\n\t[!] Missing required arguments.\n")
+  message("\n[!] Missing required arguments.\n")
   message(doc)
   quit(save = "no", status = 0, runLast = TRUE)
 }
@@ -118,7 +118,6 @@ plot_biotype_stats <- function(stats, colby, biotype = NULL, pal = NULL)
       return(y)} 
     )
   names(perc_biotype) <- paste0("perc_",biotype)
-  # perc_biotype <- do.call(cbind.data.frame, perc_biotype)
   
   pbiotypes <- lapply(names(perc_biotype), function(b) 
     {
@@ -137,9 +136,6 @@ plot_biotype_stats <- function(stats, colby, biotype = NULL, pal = NULL)
 }
 
 # 1. Read data ----
-# qcmatrix <- '/sto1/epigen/Fatemeh_nectodemt/scRNA/dataset/v1_STAR/QC1.matrix.gz'
-# metadata <- '/sto1/epigen/Fatemeh_nectodemt/scRNA/dataset/v1/metadata.txt'
-
 stats <- read_stats(qcmatrix, metadata)
 
 if(!dir.exists(outdir)) dir.create(outdir)
