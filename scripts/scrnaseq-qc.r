@@ -12,10 +12,11 @@ suppressWarnings(suppressMessages(require(docopt)))
 Options:
    -q, --qcmatrix Path to QC matrix. 
    -m, --metadata Path to experiment metadata.
-   -b, --biotype Gene biotype (comma separated) for diagnostic plots. Protein coding, lncRNA, rRNA and mitochondrial genes are reported by default.
+   -b, --biotype Gene biotype (comma separated) for diagnostic plots. 
+                 Protein coding, lncRNA, rRNA and mitochondrial genes 
+                 are reported by default.
    -c, --colby Color cells by feature in metadata [default: cell_type]
    -o, --outdir Output directory. [default: .]
-
 ' -> doc
 
 opts <- docopt(doc)
