@@ -7,12 +7,12 @@
 # Command line/Env variables ---
 suppressWarnings(suppressMessages(require(docopt)))
 'Usage:
-   scrnaseq-qc.r [-q <qcmatrix> -m <metadata> -b <biotypes> -c <colby> -o <outdir>]
+   scrnaseq-qc.r [-q <qcmatrix> -m <metadata> -b <biotype> -c <colby> -o <outdir>]
 
 Options:
    -q, --qcmatrix Path to QC matrix. 
    -m, --metadata Path to experiment metadata.
-   -b, --biotype Gene biotype for diagnostic plots. Protein coding, lncRNA, rRNA and mitochondrial genes are reported by default.
+   -b, --biotype Gene biotype (comma separated) for diagnostic plots. Protein coding, lncRNA, rRNA and mitochondrial genes are reported by default.
    -c, --colby Color cells by feature in metadata [default: cell_type]
    -o, --outdir Output directory. [default: .]
 
@@ -106,7 +106,11 @@ plot_biotype_stats <- function(stats, colby, biotype = NULL, pal = NULL)
     pal <- ggsci::pal_d3()(length(unique(stats[,colby])))
     names(pal) <- unique(stats[,colby])
   }
-  if(is.null(biotype))  biotype <- c('protein_coding','lncRNA','mitochondrial','rRNA')
+  if(grepl("\\,",biotype)) {
+    biotype <- unlist(strsplit(biotype,"\\,"))
+  } else if(is.null(biotype)) {
+    biotype <- c('protein_coding','lncRNA','mitochondrial','rRNA') 
+  }
   # tot mitochondrial
   stats$mitochondrial <- rowSums(stats[,grep('Mt_',colnames(stats))])
   
