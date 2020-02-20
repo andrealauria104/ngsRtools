@@ -190,9 +190,21 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   if(is.null(design)) {
     # Standard design matrix 
     # First column is control ( = reference in group)
-    message(" -- Standard design matrix")
+    message(" -- Standard design matrix: ~group")
+    if(!any(grepl('group', colnames(y$samples)))) {
+      if(!is.null(group)) {
+        if(length(group)==1) {
+          y$samples$group <- y$samples[,group]  
+        } else {
+          y$samples$group <- apply(y$samples[,group]  , 1, paste0, collapse = "_")
+        }
+        y$samples$group <- factor(y$samples$group)  
+        if(!is.null(reference)) y$samples$group <- relevel(y$samples$group, ref = reference) 
+      } else {
+        stop(message("[-] group not available in metadata. Please, specify a valid design matrix."))
+      }
+    }
     design <- model.matrix(~group, data = y$samples)
-    colnames(design)[-1] <- paste0(levels(group)[-1], "vs", levels(group)[1])
   } else {
     # Customized design matrix
     # Passed as string formula or model.matrix
@@ -220,6 +232,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   if(length(cf)>1) {
     message(" -- ANOVA-like for multiple group comparison") 
   }
+  message(" -- Design matrix: ", paste0(colnames(design),collapse = '-'))
   
   if(method=="exact") {
     # Exact test
@@ -231,6 +244,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     fit <- edgeR::glmFit(y, design)
     if(is.null(contrast)){
       # Standard comparison
+      nmcf <- ifelse(is.character(cf), cf, colnames(design)[cf])
+      message(" -- Testing coefficient: ",nmcf)
       lrt <- edgeR::glmLRT(fit, coef=cf)
     } else {
       # GLM with contrasts
@@ -244,6 +259,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     fit <- edgeR::glmQLFit(y, design)
     if(is.null(contrast)){
       # Standard comparison
+      nmcf <- ifelse(is.character(cf), cf, colnames(design)[cf])
+      message(" -- Testing coefficient: ",nmcf)
       qlf <- edgeR::glmQLFTest(fit, coef=cf)
     } else {
       # GLM with contrasts
@@ -260,7 +277,6 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     res <- list("y"  = y,
                 "de" = de)
     return(res)
-    
   } else {
     return(de)
   }
@@ -582,6 +598,33 @@ analyze_de_contrasts <- function(counts, design, test_contrasts
   
   return(de)
 }
+
+analyze_de_contrasts_v2 <- function(y, test_contrasts
+                                 , fdrTh   = 0.05
+                                 , fcTh    = 1
+                                 , lcpmTh  = 0.5
+                                 , fixnm_ref = NULL
+                                 , ...)
+{
+  
+  de <- lapply(test_contrasts, function(cnt) {
+    
+    message("Contrast: ", paste0(cnt[1],cnt[-1], collapse = '-'))
+    
+    x <- calculateDiffExprEdgeR(y = y
+                                , contrast = cnt
+                                , ... )
+    
+    y <- getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
+    res <- list("table" = x$table, "sig" = y)
+    return(res)
+  })
+  
+  if(!is.null(fixnm_ref)) de <- fix_de_contrast_names(de, ref = fixnm_ref)
+  
+  return(de)
+}
+
 
 create_fc_matrix_contrasts <- function(de_contrasts)
 {

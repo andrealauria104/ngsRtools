@@ -1,5 +1,13 @@
 # Differential Expression ----
-plot_cmarker_expression <- function(ebs, genes, pal, structure = "Cluster",log = T, assay.type = NULL, point.size = 0.5, plot.type = 'boxplot', filter = F)
+plot_cmarker_expression <- function(ebs, genes, pal
+                                    , structure = "Cluster"
+                                    ,colby = "structure"
+                                    ,log = T
+                                    , assay.type = NULL
+                                    , point.size = 0.5
+                                    , plot.type = 'boxplot'
+                                    , fncol = 3
+                                    , filter = F)
 {
   if(is.null(assay.type)) {
     if(log) {
@@ -13,11 +21,23 @@ plot_cmarker_expression <- function(ebs, genes, pal, structure = "Cluster",log =
   
   marker <- reshape2::melt(marker)
   colnames(marker) <- c("name","cell","expression")
+  if(colby=="structure") {
+    marker$colby <- colData(ebs)[marker$cell,grep(structure, colnames(colData(ebs)))]
+  } else {
+    marker$colby <- colData(ebs)[marker$cell,grep(colby, colnames(colData(ebs)))]
+    }
   marker$cluster <- colData(ebs)[marker$cell,grep(structure, colnames(colData(ebs)))]
   if(filter) marker <- marker[marker$expression>0,]
   if(plot.type=='boxplot') {
     dodge <- position_dodge(width = 0.8)
-    p0 <- ggplot(marker, aes(x=cluster, y=expression, col = cluster)) + geom_boxplot(lwd = 0.25, outlier.size = 0.1) + geom_jitter(size = point.size)
+    if(colby=="structure") {
+      p0 <- ggplot(marker, aes(x=cluster, y=expression, col = cluster)) + geom_boxplot(lwd = 0.25, outlier.shape = NA) + 
+        geom_jitter(size = point.size)
+    } else {
+      p0 <- ggplot(marker, aes(x=cluster, y=expression)) + geom_boxplot(lwd = 0.25, , outlier.shape = NA) + 
+        geom_jitter( aes(col = colby),size = point.size)
+    }
+    
   } else if(plot.type=='violin') {
     dodge <- position_dodge(width = 0.8)
     p0 <- ggplot(marker, aes(x=cluster, y=expression, col = cluster)) +
@@ -25,7 +45,7 @@ plot_cmarker_expression <- function(ebs, genes, pal, structure = "Cluster",log =
       stat_summary(fun.y=median, geom="point", size=0.5, color="black", position = dodge)
   }
   p <- p0 +
-    facet_wrap(~name, ncol = 3) +
+    facet_wrap(~name, ncol = fncol) +
     theme_bw() + my_theme + scale_fill_manual(values = pal) +
     scale_color_manual(values = pal) + xlab(structure) + ylab("Expression")  +
     theme(panel.grid = element_blank()
