@@ -34,9 +34,12 @@ read_sheetfile <- function(sheetfile, sstart)
       sheets  <- names(getSheets(wb)) # retrive sheet names
       rsheets <- lapply(sheets, function(sheetname) 
         {
-        suppressWarnings(read.xlsx(sheetfile, sheetName = sheetname, startRow = sstart, stringsAsFactors = F))
+        y <- suppressWarnings(read.xlsx(sheetfile, sheetName = sheetname, startRow = sstart, stringsAsFactors = F))
+	      naidx <- which(apply(y, 1, function(x) all(is.na(x))))
+	      if(length(naidx)>0) y <- y[-naidx,]
+	      return(y)
       })
-      names(rsheets) <- sheets
+      names(rsheets) <- gsub("[[:space:]]","",sheets)
       return(rsheets)
     }, 
     error = function(e) {

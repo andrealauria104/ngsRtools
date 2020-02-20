@@ -36,7 +36,10 @@ read_sheetfile <- function(sheetfile, sheetName, startRow)
   rsheetfile <- tryCatch(
     { 
       if(grepl("\\.xlsx", sheetfile)) {
-        suppressWarnings(read.xlsx(sheetfile, sheetName = sheetName, startRow = startRow, stringsAsFactors = F))
+        y <- suppressWarnings(read.xlsx(sheetfile, sheetName = sheetName, startRow = startRow, stringsAsFactors = F))
+        naidx <- which(apply(y, 1, function(x) all(is.na(x))))
+        if(length(naidx)>0) y <- y[-naidx,]
+        return(y)
       } else if(grepl("\\.txt", sheetfile)) {
         read.delim2(sheetfile, header = T, stringsAsFactors = F)
       } else if(grepl("\\.csv", sheetfile)) {
