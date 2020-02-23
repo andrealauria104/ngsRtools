@@ -6,7 +6,7 @@ loadCounts <- function(countsDIR, pattern=NULL) {
                    full.names = T)
   
   counts <- do.call(cbind, lapply(f, read.delim, header=F, row.names=(1)))
-  names(counts) <- gsub(".txt", "", basename(f))
+  names(counts) <- gsub("\\.(counts\\.)?txt", "", basename(f))
   
   return(counts)
   
