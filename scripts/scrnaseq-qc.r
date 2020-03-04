@@ -40,7 +40,8 @@ suppressWarnings(suppressMessages(require(plyr)))
 
 custom_theme <- theme_light() + theme(text = element_text(size = 8)
         , line = element_line(size=0.25)
-        , legend.key.size = unit(0.5,'cm')
+        , legend.key.size = unit(0.3,'cm')
+	, legend.spacing.x = unit(0.2, 'cm')
         , legend.title = element_blank()
         , plot.title = element_text(hjust = 0.5, size = 8)
         , legend.position = "bottom")
@@ -68,7 +69,7 @@ plot_alignment_stats <- function(stats)
   
   pals <- list(pal_d3(), pal_jama())
   names(pals) <- 1:2
-  titles <- c("Total reads","Uniquely mapped reads")
+  titles <- c("Total reads","Mapped reads")
   names(titles) <- 1:2
   
   stats$tot_unassigned <- stats$Unassigned_Ambiguity+stats$Unassigned_NoFeatures
@@ -107,10 +108,10 @@ plot_biotype_stats <- function(stats, colby, biotype = NULL, pal = NULL)
     pal <- ggsci::pal_d3()(length(unique(stats[,colby])))
     names(pal) <- unique(stats[,colby])
   }
-  if(grepl("\\,",biotype)) {
-    biotype <- unlist(strsplit(biotype,"\\,"))
-  } else if(is.null(biotype)) {
+  if(is.null(biotype)) {
     biotype <- c('protein_coding','lncRNA','mitochondrial','rRNA') 
+  } else if(grepl("\\,",biotype)) {
+    biotype <- unlist(strsplit(biotype,"\\,"))
   }
   # tot mitochondrial
   stats$mitochondrial <- rowSums(stats[,grep('Mt_',colnames(stats))])
@@ -150,7 +151,7 @@ pstats <- plot_alignment_stats(stats)
 
 outfile <- paste0(outdir, "/alignment_statistics.pdf")
 message(" -- outfile: ", outfile)
-pdf(file = outfile, paper = 'a4r', h = unit(3.5,'cm'),w = unit(8,'cm'), useDingbats = F)
+pdf(file = outfile, paper = 'a4r', h = unit(3,'cm'),w = unit(8,'cm'), useDingbats = F)
 do.call(gridExtra::grid.arrange, c(pstats, list(nrow=1,ncol=2)))
 dev.off()
 
