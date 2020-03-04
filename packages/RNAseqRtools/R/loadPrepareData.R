@@ -179,7 +179,7 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
       fs <- filter.sample.th
     } else {
       # Percentage of samples
-      fs <- floor(ncol(m)*filter.sample.th)
+      fs <- floor(ncol(y)*filter.sample.th)
     }
     if(normalize.using == "cpm") {
       keep <- rowSums(edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)>filter.expr.th) >= fs  
