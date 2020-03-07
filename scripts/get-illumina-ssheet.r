@@ -7,7 +7,7 @@ suppressWarnings(suppressMessages(require(docopt)))
 Options:
    -f, --sheetfile Path to excel workbook 
    -s, --sstart Sheet start row [default: 1]
-   -o, --outdir outdir directory [default: "."]
+   -o, --outdir outdir directory [default: .]
    -d, --date Report date in file name [default: FALSE]
 
 Author: Andrea Lauria' -> doc
@@ -57,12 +57,12 @@ write_to_file <- function(rsheetfile, sheetfile, outdir, rdate)
 {
   # Write outdir to file
   idate <- unlist(regmatches(sheetfile, gregexpr("\\d+", sheetfile)))
-  outnames <- c('SampleSheet_dualindex.csv','SampleSheet_singleindex.csv')
+  outnames <- c("SampleSheet_dualindex.csv","SampleSheet_singleindex.csv")
   if(rdate) outnames <- gsub('.csv',paste0('_',idate,'.csv'),outnames)
   names(outnames) <- c('dual','single')
   
   for(i in names(rsheetfile)) {
-    outfile <- paste0(outdir,'/',outnames[i])
+    outfile <- paste0(outdir,"/",outnames[i])
     message(" -- ", outfile)
     df <- sapply(rsheetfile[[i]], as.character)
     df[is.na(df)] <- ""
