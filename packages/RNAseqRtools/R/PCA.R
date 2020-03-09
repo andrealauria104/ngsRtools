@@ -10,7 +10,12 @@ plotPCA <- function(x, experimental_info = NULL
                     , max.pcs = NULL
                     , dim_1 = "PC1"
                     , dim_2 = "PC2"
-                    , default.title = "RNA-seq PCA") {
+                    , default.title = "RNA-seq PCA"
+                    , legend_position = "bottom"
+                    , col_legend_nrow = NULL
+                    , col_legend_ncol = NULL
+                    , shape_legend_nrow = NULL
+                    , shape_legend_ncol = NULL) {
   
   rna <- t(x)
   rna <- rna[,colSums(rna)>1]
@@ -55,9 +60,23 @@ plotPCA <- function(x, experimental_info = NULL
     theme_bw() + ggtitle(default.title) + my_theme_2 +
     theme(panel.grid.minor = element_blank()
           , plot.title = element_text(face="bold", hjust = 0.5, size=10)
-          , aspect.ratio = 1) +
+          , aspect.ratio = 1
+          , legend.key.size = unit(5,'mm')
+          , legend.position = legend_position) +
     scale_color_manual(values=pal)
   
+  if(!is.null(col_legend_nrow)) {
+    p <- p + guides(col = guide_legend(nrow=legend_nrow))
+  } 
+  if(!is.null(col_legend_ncol)) {
+    p <- p + guides(col = guide_legend(ncol=legend_ncol)) 
+  }
+  if(!is.null(shape_legend_nrow)) {
+    p <- p + guides(shape = guide_legend(nrow=legend_nrow))
+  } 
+  if(!is.null(shape_legend_ncol)) {
+    p <- p + guides(shape = guide_legend(ncol=legend_ncol)) 
+  }
   
   if(labels) {
     p <- p + ggrepel::geom_label_repel(aes(label = rownames(pca_plot), col=repel_col_by),
@@ -94,8 +113,6 @@ plotPCA <- function(x, experimental_info = NULL
         theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank())
       
     }
-    
-    
     
     return(list("pca" = p, "screeplot" = sp))
   } else {
