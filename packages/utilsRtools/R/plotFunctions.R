@@ -124,13 +124,13 @@ plot_venn_diagram <- function(vd_list
     
     # title
     , main.fontfamily = "sans"
-    , main.cex = 0.8
+    , main.cex = 0.6
     
     # names
     , cat.fontfamily = "sans"
     , cat.cex = .6
     , cat.default.pos = "outer"
-    , cat.dist = 0.1
+    , cat.dist = 0.05
     # , rotation = 1
     , ... )
   
@@ -144,4 +144,18 @@ plot_venn_diagram <- function(vd_list
   rmlog <- list.files(pattern = 'VennDiagram.*.log')
   unlink(rmlog)
   grid.draw(vd)
+}
+
+## Plot Grid ----
+plot_grid <- function(pp, nrow, ncol, top_title = NULL, ...) 
+{
+  if(!is.null(title)) {
+    args <- c(pp, list(nrow = nrow
+                       , ncol = ncol
+                       , top = textGrob(top_title, gp=gpar(fontsize=8,font=8)), ...))
+  } else {
+    args <- c(pp, list(nrow = nrow, ncol = ncol, ...))  
+  }
+  
+  do.call(gridExtra::grid.arrange, args)
 }
