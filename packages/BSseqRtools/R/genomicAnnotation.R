@@ -235,9 +235,9 @@ map_cytosines <- function(mtr, gen_ann
   return(list('maps' = maps, 'ovs' = ovs))
 }
 
-plot_map_pie <- function(maps, ptitle = NULL)
+plot_map_pie <- function(maps, ptitle = NULL, pal = NULL, nudge_x_val = 0)
 {
-  
+
   mp <- cbind.data.frame('region' = names(maps), reshape2::melt(maps))
   if(any(grepl('promoters', mp$region))) {
     mp$region <- factor(mp$region, levels = c('promoters', 'exons','introns','intergenic'))
@@ -248,19 +248,23 @@ plot_map_pie <- function(maps, ptitle = NULL)
   mp$ypos <- cumsum(mp$value)[4] - cumsum(mp$value) + mp$value/2
   mp$perc <- round(mp$value/sum(mp$value),4)
   
+  if(is.null(pal)) pal <- pal_npg()(length(unique(mp$region)))
+  
   pie <- ggplot(mp, aes(x="", y=value, fill=region)) +
-    geom_bar(width = 1, stat = "identity", col = 'black') +
+    geom_bar(width = 1, stat = "identity", col = 'black', lwd=0.25) +
     coord_polar("y", start=0) +
-    scale_fill_npg() +
+    scale_fill_manual(values = pal) +
     blank_theme + ggtitle(ptitle) +
     theme(axis.text.x=element_blank()
           , plot.title = element_text(size = 8, face = 'bold', hjust = 0.5, vjust = 0.7)
           , text = element_text(size = 8))+
     geom_label(aes(y = ypos,
-                   label = scales::percent(perc))
+                   label = scales::percent(perc), fill = region)
                , size=2.8
                , show.legend = F
-               , fill = 'white')
+               , nudge_x = nudge_x_val
+               # , fill = 'white'
+               )
   
   return(pie)
 }
