@@ -235,12 +235,16 @@ map_cytosines <- function(mtr, gen_ann
   return(list('maps' = maps, 'ovs' = ovs))
 }
 
-plot_map_pie <- function(maps, ptitle = NULL, pal = NULL, nudge_x_val = 0)
+plot_map_pie <- function(maps
+                         , ptitle = NULL
+                         , pal = NULL
+                         , nudge_x_val = 0
+                         , precedence = c('promoters', 'exons','introns','intergenic'))
 {
 
   mp <- cbind.data.frame('region' = names(maps), reshape2::melt(maps))
   if(any(grepl('promoters', mp$region))) {
-    mp$region <- factor(mp$region, levels = c('promoters', 'exons','introns','intergenic'))
+    mp$region <- factor(mp$region, levels = precedence)
   }
   
   n <- length(mp$region)

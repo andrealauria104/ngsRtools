@@ -73,7 +73,7 @@ write_to_file <- function(rsheetfile, sheetfile, outdir, rdate)
 # 1. Read Excel workbook ----
 message("")
 message("======================================================")
-message("== [*] Illumina SampleSheet from Excek workbook [*] ==")
+message("== [*] Illumina SampleSheet from Excel workbook [*] ==")
 message("======================================================")
 message("")
 
