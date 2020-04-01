@@ -37,7 +37,7 @@ get_average_methylation <- function(mratio)
   }
   
   idx <- unique(colnames(mratio))
-  idx <- unique(gsub("_rep_+\\d+","",idx))
+  idx <- unique(gsub("_rep.*\\d+","",idx, ignore.case = T))
   mratio <- lapply(idx, function(x)
   {
     i <- grep(x, colnames(mratio))
@@ -92,6 +92,7 @@ plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
   if(!is.null(fann) & is.character(fann)) {
     qm$sample <- factor(qm$sample, levels =  names(fann))
     qm$fann <- fann[qm$sample]
+    qm$fann <- factor(qm$fann, levels = unique(fann))
   }
   
   nref <- max(apply(q.mtr.ratio, 2, function(i) max(cumsum(i))))
@@ -106,7 +107,7 @@ plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
     ylab(bquote(CG~count~"("~x~10^.(om)~")")) + xlab(NULL) + 
     theme(strip.background = element_blank()
           , strip.text = element_text(size = 8)
-          , text = element_text(size = 8)
+          , text = element_text(size = 6)
           , plot.title = element_text(size = 8, hjust = 0.5, face = "bold")
           , plot.background = element_rect(size = 0.25)
           , panel.background = element_rect(size = 0.25)
@@ -200,7 +201,7 @@ plot_methratio_v2 <- function(mtr
   
   if(type=='boxplot') {
     p <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) +  
-      geom_boxplot(notch = T, outlier.shape = NA, width=0.6) + theme_bw() + my_theme + 
+      geom_boxplot(notch = T, outlier.shape = NA, width=0.6, lwd=0.25) + theme_bw() + my_theme + 
       theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)) + ylim(c(0,100)) +
       guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
       scale_fill_manual(values = pal) + ylab("% CG methylation") 

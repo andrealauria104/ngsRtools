@@ -91,13 +91,15 @@ prepare_idRef <- function(ANN){
 
 # Create bedfile ====
 write_bedfile <- function(tobed, bedfile) {
-  
+  options(scipen = 999)
+  message("[+] Writing BED format, file: ", bedfile)
   write.table(tobed, 
               quote = F      , 
               row.names = F  , 
               col.names = F  ,
               sep = "\t",
               file = bedfile)
+  options(scipen = 0)
 }
 
 # Hypergeometric test ====
