@@ -615,7 +615,8 @@ analyze_de_contrasts_v2 <- function(y, test_contrasts
                                 , contrast = cnt
                                 , ... )
     
-    y <- getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
+    y <- tryCatch(expr = getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
+                  , error = function(e) {message(e);return(NA)})
     res <- list("table" = x$table, "sig" = y)
     return(res)
   })

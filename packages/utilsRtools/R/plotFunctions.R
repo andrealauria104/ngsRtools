@@ -159,3 +159,11 @@ plot_grid <- function(pp, nrow, ncol, top_title = NULL, ...)
   
   do.call(gridExtra::grid.arrange, args)
 }
+
+## Plot legend ----
+get_legend <- function(a_gplot){
+  tmp <- ggplot2::ggplot_gtable(ggplot2::ggplot_build(a_gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
