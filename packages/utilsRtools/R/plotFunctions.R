@@ -1,6 +1,31 @@
 # Plot functions 
 
 ## ggpie with percentages ====
+plot_ggpie <- function(data, variable, title=NULL, pal = NULL, precedence = NULL, nudge_x_val = 0, label_size = 2.5)
+{
+  if(is.vector(data)) {
+    mp <- cbind.data.frame("var1" = names(data), reshape2::melt(maps))
+    mp$var1 <- as.factor(gsub("_"," ", mp$var1))
+    if(is.null(precedence)) precedence <- as.character(mp$var1)
+    mp$var1 <- factor(mp$var1, levels = precedence)
+  }
+  
+  n <- length(unique(mp$var1))
+  mp$ypos <- cumsum(mp$value)[n] - cumsum(mp$value) + mp$value/2
+  mp$perc <- round(mp$value/sum(mp$value), 4)
+  
+  if(is.null(pal)) pal <- RColorBrewer::brewer.pal(n,"Set2")
+  
+  pie <- ggplot(mp, aes(x = "", y = value, fill = var1)) + 
+    geom_bar(width = 1, stat = "identity", col = "black", 
+             lwd = 0.25) + 
+    coord_polar("y", start = 0) + scale_fill_manual(values = pal) + ggtitle(title) +
+    blank_theme + theme(axis.text.x = element_blank()
+                        , plot.title = element_text(size = 8, face = "bold", hjust = 0.5, vjust = 0.7), text = element_text(size = 8)
+                        , legend.key.size = unit(4,'mm')) + guides(fill=guide_legend(title=variable)) +
+    geom_label(aes(label = scales::percent(perc), fill = var1, y = ypos), size = label_size, show.legend = F, nudge_x = nudge_x_val)
+  return(pie)
+}
 
 # df$main should contain observations of interest
 # df$condition can optionally be used to facet wrap
