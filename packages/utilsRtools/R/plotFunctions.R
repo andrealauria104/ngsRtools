@@ -150,6 +150,8 @@ plot_venn_diagram <- function(vd_list
     # title
     , main.fontfamily = "sans"
     , main.cex = 0.6
+    , sub.fontfamily = "sans"
+    , sub.cex = 0.6
     
     # names
     , cat.fontfamily = "sans"

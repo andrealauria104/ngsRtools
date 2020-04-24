@@ -118,7 +118,7 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
                                , filter = T
                                , filter.expr.th = 1
                                , filter.sample.th = 2
-                               , normalize.using = "cpm"
+                               , expression.unit = "cpm"
                                , norm.fact.method = "TMM"
                                , normalized.lib.sizes = TRUE
                                , tlen = NULL
@@ -161,9 +161,6 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
   
   message(" -- Condition: ", paste0(levels(y$samples$group), collapse = "-"))
   
-  message(" -- Normalization factors, method = ", norm.fact.method)
-  y <- edgeR::calcNormFactors(y, method =  norm.fact.method, ...)
-  if(!normalized.lib.sizes) warning("Normalization factors are ignored in RPKM/CPM calculation. Avoid between samples comparisons!")
   # Clean environment
   rm(m)
   gc(verbose = F)
@@ -171,7 +168,7 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
   if(filter) {
     message(" -- Filtering lowly expressed genes")
     message("    -- Threshods:")
-    message("     * CPM = "     , filter.expr.th)
+    message("     * ",toupper(expression.unit)," = "     , filter.expr.th)
     message("     * Samples = " , filter.sample.th)
     
     if(filter.sample.th>=1) {
@@ -181,26 +178,31 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
       # Percentage of samples
       fs <- floor(ncol(y)*filter.sample.th)
     }
-    if(normalize.using == "cpm") {
-      keep <- rowSums(edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)>filter.expr.th) >= fs  
-    } else if (normalize.using == "rpkm") {
+    if(expression.unit == "cpm") {
+      keep <- rowSums(edgeR::cpm(y)>filter.expr.th) >= fs  
+    } else if (expression.unit == "rpkm") {
       if(is.null(tlen)) {
-        stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
+        stop(message("[!] Please, provide transcript lenghts for RPKM unit."))
       }
-      keep <- rowSums(edgeR::rpkm(y, normalized.lib.sizes = normalized.lib.sizes, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
+      keep <- rowSums(edgeR::rpkm(y, gene.length = tlen[rownames(y)])>filter.expr.th) >= fs  
     } else {
-      stop(message("[!] Incorrect normalization method (cpm, rpkm)."))
+      stop(message("[!] Incorrect expression unit (cpm, rpkm)."))
     }
     
     y <- y[keep, , keep.lib.sizes=FALSE]
   }
   
-  if(normalize.using == "cpm") {
+  message(" -- Normalization factors, method = ", norm.fact.method)
+  y <- edgeR::calcNormFactors(y, method =  norm.fact.method, ...)
+  
+  if(!normalized.lib.sizes) warning("Normalization factors are ignored in RPKM/CPM calculation. Avoid between samples comparisons!")
+  
+  if(expression.unit == "cpm") {
     y$CPM    <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)
     y$logCPM <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes, log = T)
-  } else if (normalize.using == "rpkm") {
+  } else if (expression.unit == "rpkm") {
     if(is.null(tlen)) {
-      stop(message("[!] Please, provide transcript lenghts for RPKM normalization."))
+      stop(message("[!] Please, provide transcript lenghts for RPKM unit."))
     }
     y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes)
     y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes, log = T)

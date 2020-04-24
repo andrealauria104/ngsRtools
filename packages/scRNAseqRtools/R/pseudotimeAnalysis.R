@@ -51,7 +51,7 @@ plot_pseudotemporal_ordering <- function(cds, ffeature, cfeature, pal, ...)
   return(pct)
 }
 
-plot_cells_in_pseudotime <- function(cds, structure, pal)
+plot_cells_in_pseudotime <- function(cds, structure, pal,point_size=1)
 {
   #source("theme_setting.R")
   
@@ -62,7 +62,7 @@ plot_cells_in_pseudotime <- function(cds, structure, pal)
   }
   
   ptime  <- pData(cds)[,c("Pseudotime",structure)]
-  pptime <- ggplot(ptime, aes_string(x="Pseudotime", y=structure, col=structure)) + geom_point() +
+  pptime <- ggplot(ptime, aes_string(x="Pseudotime", y=structure, col=structure)) + geom_point(size=point_size) +
     theme_bw() + my_theme + scale_color_manual(values = pal)
   
   return(pptime)

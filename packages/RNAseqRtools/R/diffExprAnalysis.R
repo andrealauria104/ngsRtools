@@ -172,6 +172,15 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     }
     
   }
+  print_coefficients <- function(cf) {
+    if(is.character(cf)) {
+      nmcf <- cf
+    } else {
+      nmcf <- colnames(design)[cf]
+    }
+    if(length(nmcf)>1) nmcf <- paste0(nmcf,collapse = "-")
+    message(" -- Testing coefficient: ",nmcf)
+  }
   message("[*] Run edgeR for Differential Expression Analysis")
   
   if(is.matrix(y) | is.data.frame(y)) {
@@ -244,8 +253,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     fit <- edgeR::glmFit(y, design)
     if(is.null(contrast)){
       # Standard comparison
-      nmcf <- ifelse(is.character(cf), cf, colnames(design)[cf])
-      message(" -- Testing coefficient: ",nmcf)
+      print_coefficients(cf)
       lrt <- edgeR::glmLRT(fit, coef=cf)
     } else {
       # GLM with contrasts
@@ -259,8 +267,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     fit <- edgeR::glmQLFit(y, design)
     if(is.null(contrast)){
       # Standard comparison
-      nmcf <- ifelse(is.character(cf), cf, colnames(design)[cf])
-      message(" -- Testing coefficient: ",nmcf)
+      print_coefficients(cf)
       qlf <- edgeR::glmQLFTest(fit, coef=cf)
     } else {
       # GLM with contrasts
