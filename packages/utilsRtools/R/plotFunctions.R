@@ -4,11 +4,15 @@
 plot_ggpie <- function(data, variable, title=NULL, pal = NULL, precedence = NULL, nudge_x_val = 0, label_size = 2.5)
 {
   if(is.vector(data)) {
-    mp <- cbind.data.frame("var1" = names(data), reshape2::melt(maps))
+    mp <- cbind.data.frame("var1" = names(data), reshape2::melt(data))
     mp$var1 <- as.factor(gsub("_"," ", mp$var1))
     if(is.null(precedence)) precedence <- as.character(mp$var1)
     mp$var1 <- factor(mp$var1, levels = precedence)
-  }
+  } else {
+    mp <- data
+    colnames(mp) <- c("var1","value")
+
+  } 
   
   n <- length(unique(mp$var1))
   mp$ypos <- cumsum(mp$value)[n] - cumsum(mp$value) + mp$value/2

@@ -149,9 +149,10 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                                    , filter = T
                                    , filter.expr.th = 1
                                    , filter.sample.th = 2
-                                   , normalize.using = "cpm"
+                                   , expression.unit = "cpm"
                                    , tlen = NULL
                                    , method = "exact"
+                                   , robust.dispersion = T
                                    , anovalike = F # Activate ANOVA-like test for any difference (alternative to cf,contrast)
                                    , design = NULL # Custom design matrix
                                    , cf = NULL # Testing coefficient (default: last column in design matrix)
@@ -192,7 +193,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                             , filter = filter
                             , filter.expr.th = filter.expr.th
                             , filter.sample.th = filter.sample.th
-                            , normalize.using = normalize.using
+                            , expression.unit = expression.unit
                             , tlen = tlen)
   }
   
@@ -217,8 +218,9 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   } else {
     # Customized design matrix
     # Passed as string formula or model.matrix
-    message(" -- Custom model matrix")
+    message(" -- Parsing design matrix")
     if(is.character(design)) {
+      message("    * Formula: ",design)
       design <- model.matrix(as.formula(design), data = y$samples)
     }
   }
@@ -235,7 +237,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   }
   
   rownames(design) <- colnames(y)
-  y <- edgeR::estimateDisp(y, design, robust=TRUE)
+  message(" -- Estimating dispersion, robust = ", robust.dispersion)
+  y <- edgeR::estimateDisp(y, design, robust=robust.dispersion)
   
   message(" -- Testing differential expression, method: ", method)
   if(length(cf)>1) {
@@ -277,7 +280,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     de  <- edgeR::topTags(qlf, n = Inf)
     
   } else {
-    stop(message("[-] Method not available. Please, provide a valid one ( exact / lrt / qlf )."))
+    stop(message("[-] Test method not available. Please, provide a valid one ( exact / lrt / qlf )."))
   }
   
   if(return.y) {
