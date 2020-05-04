@@ -250,11 +250,11 @@ plot_stats <- function(stats, vars, ptitle # vars = c(x-axis, y-axis, color)
         # facet_grid(~variable, scales = 'free') +
         xlab(gsub("rate","rate [%]",gsub("\\_"," ",vars[1]))) + 
         ylab(gsub("rate","rate [%]",gsub("\\_"," ",vars[2]))) +
-        geom_hline(yintercept = yintercept, linetype = 'dashed', size = 0.25) +
-        geom_vline(xintercept = xintercept, linetype = 'dashed', size = 0.25) +
         theme_bw() + my_theme_2 + scale_alpha_manual(values = alpha_values) +
         scale_color_manual(values = pal) + ylim(lim) + 
         guides(alpha = FALSE, col=guide_legend(title = gsub("\\_"," ",vars[3])))
+      if(!is.null(xintercept)) p <- p + geom_vline(xintercept = xintercept, linetype = 'dashed', size = 0.25)
+      if(!is.null(yintercept)) p <- p + geom_hline(yintercept = yintercept, linetype = 'dashed', size = 0.25)
     } else if(plot.type=="boxplot") {
       p <- ggplot(stats, aes_string(x = vars[1], y = vars[2], col=vars[3])) +
         geom_boxplot(lwd=0.25, alpha=.8) + geom_jitter(size=1, width = 0.3) + 
