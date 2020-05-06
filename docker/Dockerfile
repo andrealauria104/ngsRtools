@@ -38,4 +38,4 @@ CMD ["/init"]
 # To run interactive R console in current directory
 # docker run --rm -it -u `id -u`:`id -g` -v $PWD:/tmp/ anlauria/ngsrtools:0.0.1 R
 # To run RStudio server in current directory - localhost:8787
-# docker run --rm -v $PWD:/tmp/ -e PASSWORD="ngsrtools" -p 8787:8787 anlauria/ngsrtools:0.0.1
+# docker run --rm -v $(pwd):/home/rstudio -e PASSWORD="ngsrtools" -p 8787:8787 anlauria/ngsrtools:0.0.1
