@@ -30,6 +30,7 @@ WORKDIR /tmp
 
 RUN Rscript -e 'install.packages("rmarkdown", repos = "http://cran.us.r-project.org")'
 
+# Init command for s6-overlay
 CMD ["/init"]
 
 # To run interactive bash in current directory
