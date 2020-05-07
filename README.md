@@ -54,4 +54,20 @@ To uninstall the complete suite:
 cd ngsRtools
 ./uninstall.sh
 ```
-
+### Docker
+The suite can be used in a Docker container with all packages and scripts. Pull the image:
+```
+docker pull anlauria/ngsrtools
+```
+To run interactive bash in current directory
+```
+docker run --rm -it -u `id -u`:`id -g` -v $(pwd):/tmp/ anlauria/ngsrtools:0.0.1 bash
+```
+To run interactive R console in current directory
+```
+docker run --rm -it -u `id -u`:`id -g` -v $(pwd):/tmp/ anlauria/ngsrtools:0.0.1 R
+```
+To run RStudio server in current directory - localhost:8787, username=rstudio
+```
+docker run --rm -v $(pwd):/home/rstudio -e PASSWORD="ngsrtools" -p 8787:8787 anlauria/ngsrtools:0.0.1
+```
