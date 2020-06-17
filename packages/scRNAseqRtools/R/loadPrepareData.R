@@ -88,17 +88,38 @@ build_expression_matrix <- function(path_quant, path_qc_cells = NULL
     c.idx <- grep("NA|empty|(mini|)bulk|x", colnames(m), invert = T, ignore.case = T)
     m <- m[, c.idx]
     if(rm.ne) m <- m[rowSums(m > 0) > 0,]
+    return(m)
   }
   
   if(!is.null(path_qc_cells)) {
-    qc_cells <- readRDS(path_qc_cells)
-    rownames(qc_cells) <- gsub("_trimmed|\\..*","",rownames(qc_cells))
+    if(grepl(".rds$",path_qc_cells)) {
+      qc_cells <- readRDS(path_qc_cells)
+      rownames(qc_cells) <- gsub("_trimmed|\\..*","",rownames(qc_cells))
+    } else {
+      if(grepl(".csv",path_qc_cells)) {
+        sep = ","
+      } else {
+        sep = "\t"
+      }
+      qc_cells <- read.delim(path_qc_cells, stringsAsFactors = F, header = T, sep = sep)
+    }
+   
   } else {
     qc_cells <- NA
   }
   
-  m <- lapply(measure, get_quant, path_quant = path_quant, rm.ne = rm.ne, ...)
-  names(m) <- measure
+  if(grepl("raw_counts",path_quant)) {
+    if(grepl(".csv",path_quant)) {
+      sep = ","
+    } else {
+      sep = "\t"
+    }
+    m <- read.delim(path_quant, stringsAsFactors = F, header = T, sep = sep, row.names = 1)
+    if(rm.ne) m <- m[rowSums(m > 0) > 0,]
+  } else {
+    m <- lapply(measure, get_quant, path_quant = path_quant, rm.ne = rm.ne, ...)
+    names(m) <- measure
+  }
   
   return(list("quant" = m, "info" = qc_cells))
 }

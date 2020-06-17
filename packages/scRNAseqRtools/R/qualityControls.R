@@ -86,17 +86,31 @@ read_stats <- function(statdir
     if(file.exists(statdir) && !dir.exists(statdir)) {
       mstats <- read.delim(statdir, stringsAsFactors = F)
     } else if(dir.exists(statdir)) {
-      stats_file <- list.files(statdir, pattern = 'bowtie2', full.names = T)
+      stats_file <- list.files(statdir, pattern = 'bowtie2.txt$', full.names = T)
       mstats <- read.delim(stats_file, stringsAsFactors = F)
     } else {
       stop(message('[!] Please, provide valid path to alignment statistics.'))
     }
     
     mstats$Sample <- gsub(".hs2","",mstats$Sample)
-    mstats$uniq_mapping_rate <- round(100*mstats$unpaired_aligned_one/mstats$total_reads,2)
-    colnames(mstats) <- c('Sample','Unmapped','Uniquely_mapped'
-                          ,'Multimapped','Unpaired_total','Mapping_rate'
-                          ,'Total_reads', 'Uniquely_mapped_rate')
+    print(head(mstats))
+    if(any(grepl("^paired",colnames(mstats)))) {
+      mstats <- mstats[,c("Sample","paired_aligned_none","paired_aligned_one"
+                          ,"paired_aligned_multi","paired_total","overall_alignment_rate"
+                          ,"total_reads")]
+      mstats$uniq_mapping_rate <- round(100*mstats$paired_aligned_one/mstats$total_reads,2)
+      colnames(mstats) <- c('Sample','Unmapped','Uniquely_mapped'
+                            ,'Multimapped','Paired_total','Mapping_rate'
+                            ,'Total_reads', 'Uniquely_mapped_rate')
+    } else {
+      mstats <- mstats[,c("Sample","unpaired_aligned_none","unpaired_aligned_one"
+                          ,"unpaired_aligned_multi","unpaired_total","overall_alignment_rate"
+                          ,"total_reads")]
+      mstats$uniq_mapping_rate <- round(100*mstats$unpaired_aligned_one/mstats$total_reads,2)
+      colnames(mstats) <- c('Sample','Unmapped','Uniquely_mapped'
+                            ,'Multimapped','Unpaired_total','Mapping_rate'
+                            ,'Total_reads', 'Uniquely_mapped_rate')
+    }
     
     mdata <- read_metadata(metadata = metadata
                            , metadata_from_barcode = metadata_from_barcode
@@ -125,6 +139,7 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
                                     , gene_idx = 'gene_name'
                                     , type_idx = 'gene_type'
                                     , metadata = NULL
+                                    , coverage_ngenes_th = 1
                                     , metadata_from_barcode = F
                                     , barcode_info
                                     , additional_info)
@@ -144,7 +159,7 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
   } else if(is.character(count_matrix) && file.exists(count_matrix)) {
     sep <- ifelse(grepl(".csv",count_matrix), ",","\t")
     count_matrix <- read.delim(count_matrix, sep = sep, stringsAsFactors = F, header = T, row.names = 1)
-    count_matrix <- as.matrix(count_matrix[,-1])
+    count_matrix <- as.matrix(count_matrix)
   }
   
   if(is.character(gene_info)) {
@@ -174,8 +189,9 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
   biotypes_stats <- do.call(cbind, biotypes_stats)
   
   biotypes_stats$assigned_reads <- floor(colSums(count_matrix))
-  biotypes_stats$ngenes <- colSums(apply(count_matrix, 2, function(i) i>0))
-  
+  biotypes_stats$ngenes <- colSums(apply(count_matrix, 2, function(i) i>=coverage_ngenes_th))
+  biotypes_stats$coverage_ngenes_th <- coverage_ngenes_th
+    
   mdata <- read_metadata(metadata = metadata
                          , metadata_from_barcode = metadata_from_barcode
                          , cell_barcode = rownames(biotypes_stats)
@@ -297,7 +313,7 @@ plot_mapping_stats <- function(mapping_stats, color_by
                                     , xintercept = xintercept # qc pass cutoff x
                                     , yintercept = yintercept # qc pass cutoff y
                                     , plot.type = 'boxplot'
-                                    , ...) 
+                                    , ...)
     
     p_mapping_stats_uniq_2 <- plot_stats(mapping_stats
                                          , vars = c(color_by, 'Uniquely_mapped_rate', color_by)  # x-axis, y-axis, color
@@ -305,6 +321,11 @@ plot_mapping_stats <- function(mapping_stats, color_by
                                          , yintercept = yintercept # qc pass cutoff y
                                          , plot.type = 'boxplot'
                                          , ...)
+    
+    if(length(unique(mapping_stats[, color_by]))>2) {
+      p_mapping_stats_2 <- p_mapping_stats_2 + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+      p_mapping_stats_uniq_2 <- p_mapping_stats_uniq_2 + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+    }
     
     p_mapping_stats_arranged <- ggpubr::ggarrange(p_mapping_stats, p_mapping_stats_uniq
                                                   , p_mapping_stats_2, p_mapping_stats_uniq_2
@@ -380,7 +401,7 @@ plot_all_stats_v2 <- function(gene_stats, outdir
   # detected genes  ---
   p_detected <- tryCatch(plot_stats(gene_stats
                                     , vars = c('assigned_reads', 'ngenes', col_by)
-                                    , ptitle = 'Detected genes'
+                                    , ptitle = paste0('Detected genes (',unique(gene_stats$coverage_ngenes_th),"X)")
                                     , yintercept = th_detected_genes
                                     , xintercept = th_assigned_reads
                                     , lim = c(0,max(gene_stats$ngenes))
