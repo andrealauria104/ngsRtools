@@ -111,7 +111,7 @@ read_stats <- function(statdir
                             ,'Multimapped','Unpaired_total','Mapping_rate'
                             ,'Total_reads', 'Uniquely_mapped_rate')
     }
-    
+
     mdata <- read_metadata(metadata = metadata
                            , metadata_from_barcode = metadata_from_barcode
                            , cell_barcode = mstats$Sample
@@ -131,6 +131,20 @@ read_stats <- function(statdir
   } else if(pipeline=='star'){
     if(file.exists(statdir) && !dir.exists(statdir)) {
       mstats <- read.delim(statdir, stringsAsFactors = F)
+    } else if(dir.exists(statdir)) {
+      stats_file <- list.files(statdir, pattern = 'star.txt$', full.names = T)
+      mstats <- read.delim(stats_file, stringsAsFactors = F)
+      mstats$Sample <- gsub(".STAR","",mstats$Sample)
+      mstats <- mstats[,c("Sample","uniquely_mapped_percent"
+                          ,"multimapped_percent","uniquely_mapped"
+                          ,"multimapped","total_reads")]
+      
+      mstats$unmapped <- mstats$total_reads-mstats$uniquely_mapped-mstats$multimapped
+      mstats$mapping_rate <- mstats$uniquely_mapped_percent+mstats$multimapped_percent
+      
+      colnames(mstats) <- c('Sample','Uniquely_mapped_rate',"Multimapped_rate"
+                            ,'Uniquely_mapped','Multimapped','Total_reads'
+                            ,'Unmapped','Mapping_rate')
     } else {
       stop(message('[!] Please, provide valid path to alignment statistics.'))
     }
