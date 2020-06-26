@@ -4,167 +4,149 @@
 # single cell RNA-sequencing - quality controls #
 # # # # # # # # # # # # # # # # # # # # # # # # #
 
+# 0. Resources ----
 # Command line/Env variables ---
 suppressWarnings(suppressMessages(require(docopt)))
 'Usage:
-   scrnaseq-qc.r [-q <qcmatrix> -m <metadata> -b <biotype> -c <colby> -o <outdir>]
+   scrnaseq-qc.r [-q <qcmatrix> -c <counts> -m <metadata> -g <gencode> -p <pipeline> -b <biotype> -f <features> -a <analysis> -o <outdir>]
 
 Options:
-   -q, --qcmatrix Path to QC matrix. 
+   -q, --qcmatrix Path to QC matrix or multiQC output directory.
+   -c, --counts Path to raw counts. 
    -m, --metadata Path to experiment metadata.
+   -g, --gencode Path to GENCODE gene/transcript biotype annotation table.
+   -p, --pipeline Pipeline used for data processing (hisat/salmon/star) [default: hisat].
    -b, --biotype Gene biotype (comma separated) for diagnostic plots. 
                  Protein coding, lncRNA, rRNA and mitochondrial genes 
                  are reported by default.
-   -c, --colby Color cells by feature in metadata [default: cell_type]
+   -f, --features Color cells by feature in metadata.
+   -a, --analysis Project title [default: scRNA-seq].
    -o, --outdir Output directory. [default: .]
 ' -> doc
 
 opts <- docopt(doc)
-if(is.null(opts$qcmatrix) || is.null(opts$metadata)) {
-  message("\n[!] Missing required arguments.\n")
+required_args <- opts[c(1:4,7)]
+if(any(sapply(required_args, is.null))) {
+  missing_idx <- sapply(required_args, is.null)
+  missing_args <- gsub("--"," ",names(required_args)[missing_idx])
+  message("\n[!] Missing required arguments: ",missing_args,"\n")
   message(doc)
   quit(save = "no", status = 0, runLast = TRUE)
 }
 
-qcmatrix <- as.character(opts$qcmatrix)
-metadata <- as.character(opts$metadata)
-biotype <- opts$biotype
-colby   <- as.character(opts$colby)
-outdir  <- as.character(opts$outdir)
+# mapping_stats ---
+path_mapping_stats <- as.character(opts$qcmatrix)
+path_counts   <- as.character(opts$counts)
+path_metadata <- as.character(opts$metadata)
 
-# 0. Resources ----
-suppressWarnings(suppressMessages(require(ggplot2)))
-suppressWarnings(suppressMessages(require(ggsci)))
-suppressWarnings(suppressMessages(require(plyr)))
-
-
-custom_theme <- theme_light() + theme(text = element_text(size = 8)
-        , line = element_line(size=0.25)
-        , legend.key.size = unit(0.3,'cm')
-	, legend.spacing.x = unit(0.2, 'cm')
-        , legend.title = element_blank()
-        , plot.title = element_text(hjust = 0.5, size = 8)
-        , legend.position = "bottom")
-
-# Read data ---
-read_stats <- function(qcmatrix, metadata) 
-{
-  qcmat <- read.delim(qcmatrix, header = T)
-  mdata <- read.delim(metadata, header = T)
-  
-  stats <- cbind.data.frame(mdata, qcmat[match(mdata$Sample, qcmat$Sample),-1])
-  
-  return(stats)
-}
-# Alignment statistics ---
-plot_alignment_stats <- function(stats) 
-{
-  
-  idx <- stats[with(stats, order(tot, decreasing = F)),'Sample']
-  
-  qc_metrics <- c('non_ribo_uniq_map','Assigned','tot_unassigned','tot_multimap', 'ribo','non_ribo_multi_map','unmap')
-  names(qc_metrics) <- c(1,2,2,1,2,2,1)
-  qc_metrics_fix <- c('Uniquely mapped','Assigned','Unassigned','Multimapped','Ribosomal','Non-ribo-multimap','Unmapped')
-  names(qc_metrics_fix) <- c(1,2,2,1,2,2,1)
-  
-  pals <- list(pal_d3(), pal_jama())
-  names(pals) <- 1:2
-  titles <- c("Total reads","Mapped reads")
-  names(titles) <- 1:2
-  
-  stats$tot_unassigned <- stats$Unassigned_Ambiguity+stats$Unassigned_NoFeatures
-  stats$tot_multimap <- stats$ribo+stats$non_ribo_multi_map
-  
-  pstats <- lapply(unique(names(qc_metrics)), function(x) 
-  {
-    metrics <- qc_metrics[names(qc_metrics)==x]
-    metrics_fix <- qc_metrics_fix[names(qc_metrics_fix)==x]
-    
-    toplot <- reshape2::melt(stats[,c('Sample', metrics)], id.var = 'Sample')
-    tot_idx <- ddply(toplot, .(Sample), summarize, tot = sum(value))
-    idx <- tot_idx[with(tot_idx, order(tot, decreasing = F)),'Sample']
-    
-    toplot[,'Sample'] <- factor(toplot[,'Sample'], levels = as.character(idx))
-    toplot$variable <- factor(toplot$variable, levels = rev(metrics))
-    levels(toplot$variable) <- rev(metrics_fix)
-    
-    pal <- pals[[x]](length(metrics))
-    
-    p <- ggplot(toplot, aes(x = Sample, y = value, fill = variable, col = variable)) +
-      geom_col(size = 0.25, alpha = 0.9) + ylab("Number of reads") +
-      scale_fill_manual(values = pal) + scale_color_manual(values = pal) + 
-      ggtitle(titles[x]) + custom_theme + theme(axis.text.x = element_blank()
-                                                , axis.ticks.x = element_blank()
-                                                ,panel.grid.major.x = element_blank()) +
-      guides(col = guide_legend(reverse = TRUE), fill = guide_legend(reverse = TRUE))
-  })
-  
-  return(pstats)
-}
-# Biotype statistics ---
-plot_biotype_stats <- function(stats, colby, biotype = NULL, pal = NULL)
-{
-  if(is.null(pal)) {
-    pal <- ggsci::pal_d3()(length(unique(stats[,colby])))
-    names(pal) <- unique(stats[,colby])
-  }
-  if(is.null(biotype)) {
-    biotype <- c('protein_coding','lncRNA','mitochondrial','rRNA') 
-  } else if(grepl("\\,",biotype)) {
-    biotype <- unlist(strsplit(biotype,"\\,"))
-  }
-  # tot mitochondrial
-  stats$mitochondrial <- rowSums(stats[,grep('Mt_',colnames(stats))])
-  
-  # % reads per biotype
-  perc_biotype <- lapply(biotype, function(x) 
-    {
-      y <- round(100*stats[,x]/stats[,'Assigned'],2)
-      y[which(is.nan(y))] <- 0
-      return(y)} 
-    )
-  names(perc_biotype) <- paste0("perc_",biotype)
-  
-  pbiotypes <- lapply(names(perc_biotype), function(b) 
-    {
-    toplot <- cbind.data.frame(stats[,c('Sample','cell_type', 'time','Assigned')], perc_biotype[[b]])
-    colnames(toplot)[5] <- b
-    
-    p <- ggplot(toplot, aes_string(x = 'Assigned', y = b)) +
-      geom_point(aes_string(col=colby), size = 1, alpha = 0.8) + ylab("% of reads") + 
-      xlab("Assigned reads") + custom_theme + scale_color_manual(values = pal) +
-      ggtitle(gsub("_|perc"," ",b))  + theme(panel.grid.minor.x = element_blank())
-    
-  }) 
-  names(pbiotypes) <- names(perc_biotype)
-  
-  return(pbiotypes)
-}
-
-# 1. Read data ----
-stats <- read_stats(qcmatrix, metadata)
+# util data ---
+biotype  <- as.character(opts$biotype)
+gencode  <- as.character(opts$gencode)
+pipeline <- as.character(opts$pipeline)
+metadata_features <- as.character(opts$features)
+outdir   <- as.character(opts$outdir)
+analysis <- as.character(opts$analysis
+                         )
+# directories ---
+FIGDIR <- paste0(outdir,"/Figures/", analysis)
+RESDIR <- paste0(outdir,"/Results/", analysis)
 
 if(!dir.exists(outdir)) dir.create(outdir)
-# 2. Plot alignment statistics ----
-message("\n[+] Plot alignment statistics \n")
-pstats <- plot_alignment_stats(stats)
+if(!dir.exists(FIGDIR)) dir.create(FIGDIR, recursive = T)
+if(!dir.exists(RESDIR)) dir.create(RESDIR, recursive = T)
 
-outfile <- paste0(outdir, "/alignment_statistics.pdf")
-message(" -- outfile: ", outfile)
-pdf(file = outfile, paper = 'a4r', h = unit(3,'cm'),w = unit(8,'cm'), useDingbats = F)
-do.call(gridExtra::grid.arrange, c(pstats, list(nrow=1,ncol=2)))
-dev.off()
-
-# 3. Plot gene biotype statistics ----
-message("\n[+] Plot gene biotype statistics \n")
-pbiotypes <- plot_biotype_stats(stats, colby = colby, biotype = biotype)
-
-for(i in names(pbiotypes)) {
-  outfile <- paste0(outdir, "/biotype_stats_",i,".pdf")
-  message(" -- outfile: ", outfile)
-  pdf(file = outfile, paper = 'a4', h = unit(3,'cm'),w = unit(3,'cm'), useDingbats = F)
-  print(pbiotypes[[i]])
-  dev.off()
+# requirements ---
+suppressWarnings(suppressMessages(require(scRNAseqRtools)))
+# helper functions 
+get_palette_features <- function(metadata_features)
+{
+  pals <- ls('package:ggsci', pattern = 'pal')[1:length(metadata_features)]
+  palette_features <- lapply(pals, function(p) get(p)()(9))
+  names(palette_features) <- metadata_features
+  return(palette_features)
 }
 
-message("\n[+] All done. \n")
+#' ---
+#' title: `r eval(analysis)`
+#' ---
+#' ### 1. Alignment statistics
+#' Visualize reads alignment results, summarize by sample features.
+# 1. Alignment statistics ----
+metadata <- read.delim(path_metadata, stringsAsFactors = F)
+# mapping stats ---
+mapping_stats <- read_stats(statdir = path_mapping_stats
+                            , metadata = path_metadata
+                            , pipeline = pipeline)
+
+palette_features  <- get_palette_features(metadata_features)
+
+#+ fig.width=8, fig.height=8
+for(feature in metadata_features) {
+  
+  p_map_stats_feature <- plot_mapping_stats(mapping_stats
+                                            , color_by = feature
+                                            , pal = palette_features[[feature]]
+                                            , p_boxplot = T)
+  print(p_map_stats_feature)
+  outfile <- paste0(FIGDIR,"/Mapping_rate_colby_",feature,".pdf")
+  message(" -- output file: ", outfile)
+  pdf(file = outfile, paper = "a4r", useDingbats = F, w=unit(6,'cm'), height = unit(6,'cm'))
+  print(p_map_stats_feature)
+  dev.off()
+  
+}
+
+#' Overall alignment distribution
+p_overall_stat <- plot_overall_alignment_stats(mapping_stats = mapping_stats)
+#+ fig.width=5, fig.height=4
+p_overall_stat
+outfile <- paste0(FIGDIR,"/overall_mapping_rate.pdf")
+pdf(file = outfile, paper = "a4r", useDingbats = F, w=unit(3.5,'cm'), height = unit(2.5,'cm'))
+p_overall_stat
+dev.off()
+
+#' ### 2. Gene biotype statistics 
+#' Genes/transcripts QC alignment results. Visualize alignment statistics per transcript categories and sample features.
+# 2. Gene biotype stats ----
+biotypes_stats <- calc_gene_biotype_stats(count_matrix = path_counts
+                                         , gene_info = gencode
+                                         , metadata = path_metadata
+                                         , pipeline = pipeline
+                                         , coverage_ngenes_th = 10)
+#+ fig.width=9, fig.height=20
+for(feature in metadata_features) {
+  p_biotypes_stats <- plot_all_stats_v3(gene_stats = biotypes_stats
+                                        , save_plots = T
+                                        , col_by = feature
+                                        , th_assigned_reads = 100000
+                                        , th_detected_genes = 2000
+                                        , th_mitochondrial = 25
+                                        , pal = palette_features[[feature]]
+                                        , outdir = FIGDIR, w=unit(7,'cm'),h=unit(4,'cm')
+                                        , guide_legend_nrow = ceiling(length(unique(biotypes_stats[,feature]))/4))
+
+  
+  print(ggpubr::ggarrange(plotlist = p_biotypes_stats
+                    , ncol=1
+                    , common.legend = TRUE
+                    , legend="none"))
+}
+
+#' ### 3. Explore QC results
+#' Global alignment statistics
+DT::datatable(mapping_stats, rownames = F, filter = 'top')
+
+outfile <- paste0(RESDIR, "/mapping_stats.rds")
+saveRDS(mapping_stats, file = outfile)
+
+outfile <- paste0(RESDIR, "/mapping_stats.txt")
+write.table(mapping_stats, file = outfile, row.names = F, quote = F, sep = "\t")
+
+#' Gene biotype statistics
+DT::datatable(biotypes_stats, rownames = F, filter = 'top')
+
+outfile <- paste0(RESDIR, "/biotypes_stats.rds")
+saveRDS(biotypes_stats, file = outfile)
+
+outfile <- paste0(RESDIR, "/biotypes_stats.txt")
+write.table(biotypes_stats, file = outfile, row.names = F, quote = F, sep = "\t")

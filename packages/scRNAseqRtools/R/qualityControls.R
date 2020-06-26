@@ -76,12 +76,12 @@ read_metadata <- function(metadata
 
 read_stats <- function(statdir
                        , metadata = NULL
-                       , type = 'hisat'
+                       , pipeline = 'hisat'
                        , metadata_from_barcode = F
                        , barcode_info
                        , additional_info)
 {
-  if(any(grepl("multiqc",statdir)) & type == 'hisat'){
+  if(any(grepl("multiqc",statdir)) & pipeline == 'hisat'){
     
     if(file.exists(statdir) && !dir.exists(statdir)) {
       mstats <- read.delim(statdir, stringsAsFactors = F)
@@ -93,7 +93,7 @@ read_stats <- function(statdir
     }
     
     mstats$Sample <- gsub(".hs2","",mstats$Sample)
-    print(head(mstats))
+    # print(head(mstats))
     if(any(grepl("^paired",colnames(mstats)))) {
       mstats <- mstats[,c("Sample","paired_aligned_none","paired_aligned_one"
                           ,"paired_aligned_multi","paired_total","overall_alignment_rate"
@@ -119,15 +119,27 @@ read_stats <- function(statdir
                            , additional_info = additional_info)
     
     stats <- cbind.data.frame(mdata, mstats[match(mdata$Sample, mstats$Sample),-1])
-  } else if(type=='salmon') {
+  } else if(pipeline=='salmon') {
     stats <- read_salmon_stats(statdir)
-  } else if(type=='hisat') {
+  } else if(pipeline=='hisat') {
     message('[!] Old stats summary for compatibility only, to be deprecated')
     # for compatibility, to be deprecated
-    stats <- AlignStat(STATDIR = statdir)
+    stats <- RNAseqRtools::AlignStat(STATDIR = statdir)
     tmp  <- process_barcode(stats$sample)
     stats$sample <- NULL
     stats <- cbind.data.frame(stats, tmp)
+  } else if(pipeline=='star'){
+    if(file.exists(statdir) && !dir.exists(statdir)) {
+      mstats <- read.delim(statdir, stringsAsFactors = F)
+    } else {
+      stop(message('[!] Please, provide valid path to alignment statistics.'))
+    }
+    mdata <- read_metadata(metadata = metadata
+                           , metadata_from_barcode = metadata_from_barcode
+                           , cell_barcode = mstats$Sample
+                           , barcode_info = barcode_info
+                           , additional_info = additional_info)
+    stats <- cbind.data.frame(mdata, mstats[match(mdata$Sample, mstats$Sample),-1])
   } else {
     stop(message('[!] Invalid input.'))
   }
@@ -135,9 +147,10 @@ read_stats <- function(statdir
 }
 
 calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
-                                    , type = 'hisat'
+                                    , pipeline = 'hisat'
                                     , gene_idx = 'gene_name'
                                     , type_idx = 'gene_type'
+                                    , biotypes = NULL
                                     , metadata = NULL
                                     , coverage_ngenes_th = 1
                                     , metadata_from_barcode = F
@@ -148,11 +161,11 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
   if(missing(count_matrix)) {
     message('[+] Loading expression matrix')
     
-    if(type=='salmon') {
+    if(pipeline=='salmon') {
       message(" -- salmon")
       count_matrix <- read_salmon_quant(DATADIR = DATADIR)
       
-    } else if(type=='hisat') {
+    } else if(pipeline=='hisat') {
       message(" -- hisat")
       count_matrix <- loadCounts(countsDIR = DATADIR, pattern = ".*txt$")
     }
@@ -273,7 +286,15 @@ plot_stats <- function(stats, vars, ptitle # vars = c(x-axis, y-axis, color)
       if(!is.null(yintercept)) p <- p + geom_hline(yintercept = yintercept, linetype = 'dashed', size = 0.25)
     } else if(plot.type=="boxplot") {
       p <- ggplot(stats, aes_string(x = vars[1], y = vars[2], col=vars[3])) +
-        geom_boxplot(lwd=0.25, alpha=.8) + geom_jitter(size=1, width = 0.3) + 
+        geom_boxplot(lwd=0.25, alpha=.8) + geom_jitter(size=.4, width = 0.2) + 
+        xlab(gsub("rate","rate [%]",gsub("\\_"," ",vars[1]))) + 
+        ylab(gsub("rate","rate [%]",gsub("\\_"," ",vars[2]))) +
+        theme_bw() + my_theme_2 + scale_alpha_manual(values = alpha_values) +
+        scale_color_manual(values = pal) + ylim(lim) + 
+        guides(alpha = FALSE, col=guide_legend(title = gsub("\\_"," ",vars[3])))
+    } else if(plot.type=="violin") {
+      p <- ggplot(stats, aes_string(x = vars[1], y = vars[2], col=vars[3])) +
+        geom_violin(lwd=0.25, alpha=.8, trim = T) + geom_jitter(size=.4, width = 0.2) + 
         xlab(gsub("rate","rate [%]",gsub("\\_"," ",vars[1]))) + 
         ylab(gsub("rate","rate [%]",gsub("\\_"," ",vars[2]))) +
         theme_bw() + my_theme_2 + scale_alpha_manual(values = alpha_values) +
@@ -380,10 +401,13 @@ plot_overall_alignment_stats <- function(mapping_stats, size_cutoff)
   return(p)
 }
 
-plot_all_stats_v2 <- function(gene_stats, outdir
+plot_all_stats_v3 <- function(gene_stats
+                              , outdir = NULL
                               , th_assigned_reads = 100000
                               , th_detected_genes = 2000
-                              , th_protein_coding = 75
+                              , th_protein_coding = NULL
+                              , th_lncRNA = NULL
+                              , th_rRNA = NULL
                               , th_mitochondrial = 25
                               , return_plots = T
                               , save_plots = T
@@ -399,53 +423,86 @@ plot_all_stats_v2 <- function(gene_stats, outdir
   }
   
   # detected genes  ---
-  p_detected <- tryCatch(plot_stats(gene_stats
+  p_scatter_detected <- tryCatch(plot_stats(gene_stats
                                     , vars = c('assigned_reads', 'ngenes', col_by)
-                                    , ptitle = paste0('Detected genes (',unique(gene_stats$coverage_ngenes_th),"X)")
                                     , yintercept = th_detected_genes
                                     , xintercept = th_assigned_reads
-                                    , lim = c(0,max(gene_stats$ngenes))
+                                    , lim = c(0,max(gene_stats$ngenes+1))
                                     , ydirection = "greater"
                                     , pal = pal) + 
-                           ylab("n. of genes") + xlab("Assigned reads") + p_guide_legend
+                           ylab("N. of genes") + xlab("Assigned reads") + p_guide_legend
                          , error = function(e) {message(e);return(NA)})
+  p_violin_assigned <- tryCatch(plot_stats(gene_stats
+                                    , plot.type = "violin"
+                                    , vars = c(col_by, 'assigned_reads', col_by)
+                                    , lim = c(0,max(gene_stats$assigned_reads+1))
+                                    , ydirection = "greater"
+                                    , pal = pal) + 
+                           xlab(col_by) + ylab("Assigned reads") + p_guide_legend
+                         , error = function(e) {message(e);return(NA)})
+  p_violin_ngenes <- tryCatch(plot_stats(gene_stats
+                                      , plot.type = "violin"
+                                      , vars = c(col_by, 'ngenes', col_by)
+                                      , lim = c(0,max(gene_stats$ngenes+1))
+                                      , ydirection = "greater"
+                                      , pal = pal) + 
+                                ylab("N. of genes") + xlab(col_by) + p_guide_legend
+                           , error = function(e) {message(e);return(NA)})
+  if(length(unique(gene_stats[, col_by]))>2) {
+    p_violin_assigned <- p_violin_assigned + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+    p_violin_ngenes <- p_violin_ngenes + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+  }
+  p_detected <- ggpubr::ggarrange(plotlist = list(p_scatter_detected,p_violin_ngenes,p_violin_assigned)
+                                  , common.legend = T
+                                  , legend = "bottom"
+                                  , nrow = 1)
+  ptitle_detected <- paste0('Detected genes (',unique(gene_stats$coverage_ngenes_th),"X)")
+  p_detected <- ggpubr::annotate_figure(p_detected, top = textGrob(ptitle_detected, gp=gpar(fontsize=8,font=8)))
   
-  # % protein coding ---
-  p_protein <- tryCatch(plot_stats(gene_stats
-                                   , vars = c('assigned_reads', 'perc_protein_coding', col_by)
-                                   , ptitle = 'Protein coding genes'
-                                   , yintercept = th_protein_coding
-                                   , xintercept = th_assigned_reads
-                                   , lim = c(0,100)
-                                   , ydirection = "greater"
-                                   , pal = pal) + 
-                          ylab("% of reads") + xlab("Assigned reads") + p_guide_legend
-                        , error = function(e) {message(e);return(NA)})
+  # % biotypes ---
+  perc_biotypes <- c("perc_protein_coding","perc_lncRNA","perc_rRNA","perc_mitochondrial")
+  th_biotypes <- c("th_protein_coding","th_lncRNA","th_rRNA","th_mitochondrial")
+  names(th_biotypes) <- perc_biotypes
+  direction_biotypes <- c("greater","greater","less","less")
+  names(direction_biotypes) <- perc_biotypes
+  ptitle_biotypes <- paste0(c("Protein coding","lncRNA","rRNA","Mitochondrial")," genes")
+  names(ptitle_biotypes) <- perc_biotypes
   
-  # % mitochondrial ---
-  p_mito <- tryCatch(plot_stats(gene_stats
-                                , vars = c('assigned_reads', 'perc_mitochondrial', col_by)
-                                , ptitle = 'Mitochondrial genes'
-                                , yintercept = th_mitochondrial
-                                , xintercept = th_assigned_reads
-                                , lim = c(0,100)
-                                , ydirection = "less"
-                                , pal = pal) + 
-                       ylab("% of reads") + xlab("Assigned reads") + p_guide_legend
-                     , error = function(e) {message(e);return(NA)})
-  
-  # Save QC results ---
-  plots <- list('p_detected' = p_detected
-                ,'p_protein' = p_protein
-                ,'p_mito'    = p_mito)
-  if(col_by!='') names(plots) <- paste0(names(plots),"_",col_by)
+  p_biotypes <- list()
+  for(i in perc_biotypes) {
+    
+    p_scatter <- tryCatch(plot_stats(gene_stats
+                                     , vars = c('assigned_reads', i, col_by)
+                                     , yintercept = get(th_biotypes[i])
+                                     , xintercept = th_assigned_reads
+                                     , lim = c(0,100)
+                                     , ydirection = direction_biotypes[i]
+                                     , pal = pal) + 
+                            ylab("% of reads") + xlab("Assigned reads") + p_guide_legend
+                          , error = function(e) {message(e);return(NA)})
+    p_violin <- tryCatch(plot_stats(gene_stats
+                                    , plot.type = "violin"
+                                    , vars = c(col_by, i, col_by)
+                                    , yintercept = get(th_biotypes[i])
+                                    , xintercept = NULL
+                                    , lim = c(0,100)
+                                    , ydirection = direction_biotypes[i]
+                                    , pal = pal) + 
+                           ylab("% of reads") + xlab(col_by) + p_guide_legend
+                         , error = function(e) {message(e);return(NA)})
+    
+    p_biotypes[[i]] <- ggpubr::ggarrange(p_scatter,p_violin, common.legend = T, legend = "bottom")
+    p_biotypes[[i]] <- ggpubr::annotate_figure(p_biotypes[[i]], top = textGrob(ptitle_biotypes[i], gp=gpar(fontsize=8,font=8)))
+  }
+  plots_all <- c(list("detected"=p_detected), p_biotypes)
+  if(col_by!='') names(plots_all) <- paste0(names(plots_all),"_",col_by)
   if(save_plots) {
     message("[+] Saving QC results ...")
-    save_qc_plots(p = plots, outdir = outdir, ...)
+    save_qc_plots(p = plots_all, outdir = outdir, ...)
     message(" -- done.")
   }
   
-  if(return_plots) return(plots)
+  if(return_plots) return(plots_all)
 }
 
 # To be deprecated ----
@@ -583,6 +640,75 @@ plot_all_stats <- function(gene_stats, outdirs
   mapply(save_qc_plots, p = plots, outdir = outdirs, ...)
   message(" -- done.")
   dev.off()
+  
+  if(return_plots) return(plots)
+}
+
+# to be deprecated
+plot_all_stats_v2 <- function(gene_stats, outdir
+                              , th_assigned_reads = 100000
+                              , th_detected_genes = 2000
+                              , th_protein_coding = 75
+                              , th_mitochondrial = 25
+                              , return_plots = T
+                              , save_plots = T
+                              , col_by = ''
+                              , pal = NULL
+                              , guide_legend_nrow = 2
+                              , ...)
+{
+  if(col_by!='') {
+    p_guide_legend <- guides(col=guide_legend(nrow=guide_legend_nrow))
+  } else {
+    p_guide_legend <- guides(col=FALSE)
+  }
+  
+  # detected genes  ---
+  p_detected <- tryCatch(plot_stats(gene_stats
+                                    , vars = c('assigned_reads', 'ngenes', col_by)
+                                    , ptitle = paste0('Detected genes (',unique(gene_stats$coverage_ngenes_th),"X)")
+                                    , yintercept = th_detected_genes
+                                    , xintercept = th_assigned_reads
+                                    , lim = c(0,max(gene_stats$ngenes))
+                                    , ydirection = "greater"
+                                    , pal = pal) + 
+                           ylab("N. of genes") + xlab("Assigned reads") + p_guide_legend
+                         , error = function(e) {message(e);return(NA)})
+  
+  # % protein coding ---
+  p_protein <- tryCatch(plot_stats(gene_stats
+                                   , vars = c('assigned_reads', 'perc_protein_coding', col_by)
+                                   , ptitle = 'Protein coding genes'
+                                   , yintercept = th_protein_coding
+                                   , xintercept = th_assigned_reads
+                                   , lim = c(0,100)
+                                   , ydirection = "greater"
+                                   , pal = pal) + 
+                          ylab("% of reads") + xlab("Assigned reads") + p_guide_legend
+                        , error = function(e) {message(e);return(NA)})
+  
+  # % mitochondrial ---
+  p_mito <- tryCatch(plot_stats(gene_stats
+                                , vars = c('assigned_reads', 'perc_mitochondrial', col_by)
+                                , ptitle = 'Mitochondrial genes'
+                                , yintercept = th_mitochondrial
+                                , xintercept = th_assigned_reads
+                                , lim = c(0,100)
+                                , ydirection = "less"
+                                , pal = pal) + 
+                       ylab("% of reads") + xlab("Assigned reads") + p_guide_legend
+                     , error = function(e) {message(e);return(NA)})
+  
+  # Save QC results ---
+  plots <- list('p_detected' = p_detected
+                ,'p_protein' = p_protein
+                ,'p_mito'    = p_mito)
+  if(col_by!='') names(plots) <- paste0(names(plots),"_",col_by)
+  if(save_plots) {
+    message("[+] Saving QC results ...")
+    save_qc_plots(p = plots, outdir = outdir, ...)
+    message(" -- done.")
+  }
   
   if(return_plots) return(plots)
 }

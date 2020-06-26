@@ -19,8 +19,8 @@ if(length(cran_not_installed)>0) {
    for(i in cran_not_installed) {
      install.packages(i, repos=CRAN)	
  }
+ rm(i)
 }
-rm(i)
 # 2. Bioconductor ----
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager", repos = CRAN)
 
@@ -35,6 +35,7 @@ if(length(bioconductor_not_installed)>0) {
    for(i in bioconductor_not_installed) {
      BiocManager::install(i)
  }
+ rm(i)
 }
 
 # 3. Check installed packages ----

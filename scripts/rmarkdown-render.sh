@@ -1,17 +1,17 @@
 #!/bin/sh
 # Default directories ---
-ROOTDIR=$PWD
 OUTPUTDIR="Rmarkdown"
+RARGS=""
 
 # Command line options ---
-usage() { echo "Usage: $0 [-r <path-to-rscript>] [-d <path-to-rootdir>] [-o <path-to-outdir>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-r <path-to-rscript>] [-o <path-to-outdir>] [-a <args-to-rscript>]" 1>&2; exit 1; }
 
-while getopts ":hr:d:o:" opt; do
+while getopts ":hr:o:a:" opt; do
 	case $opt in
 		h)	usage;;
 		r)	RSCRIPT=$OPTARG;;
-		d)	ROOTDIR=$OPTARG;;
 		o)	OUTPUTDIR=$OPTARG;;
+		a)	RARGS=$OPTARG;;
 		\?)	echo "Invalid option: ${OPTARG}" 1>&2; usage;;
 		:)	echo "Invalid option: ${OPTARG} requires an argument" 1>&2; usage;;
 	esac
@@ -22,14 +22,22 @@ shift $((OPTIND -1))
 if [ -z "${RSCRIPT}" ]; then
     usage
 fi
+
+if [ ${RARGS} = "-h" ]; then
+    if [ -x ${RSCRIPT} ]; then
+      Rscript --vanilla ${RSCRIPT} ${RARGS}
+    else
+      echo "\n[!] ${RSCRIPT} does not have help message for argument parsing.\n"
+    fi
+    exit 1
+fi
 # Execution ---
 echo ""
 echo "[*] Render Rmarkdown report from Rscript [*]"
 echo ""
-echo " -- Root directory: ${ROOTDIR}"
 echo " -- Output directory: ${OUTPUTDIR}"
 echo ""
 
-echo Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', output_dir='${OUTPUTDIR}')" ${ROOTDIR}
+echo Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', output_dir='${OUTPUTDIR}')" ${RARGS}
 
-Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', output_dir='${OUTPUTDIR}')" ${ROOTDIR}
+Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', output_dir='${OUTPUTDIR}')" ${RARGS}

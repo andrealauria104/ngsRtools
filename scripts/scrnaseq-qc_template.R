@@ -9,24 +9,20 @@ args <- commandArgs(trailingOnly = T)
 
 # directories ---
 rootdir <- as.character(args[1])
-DATADIR   <- paste0(rootdir,"/input_data")
-wd <- rootdir
+datadir   <- paste0(rootdir,"/input_data")
 
 # mapping_stats ---
-path_mapping_stats <- paste0(DATADIR,"/multiqc_data")
-path_metadata <- paste0(DATADIR,"/metadata.txt")
-path_counts <- paste0(DATADIR,"/raw_counts.csv.gz")
+path_mapping_stats <- paste0(datadir,"/multiqc_data")
+path_metadata <- paste0(datadir,"/metadata.txt")
+path_counts <- paste0(datadir,"/raw_counts.csv.gz")
 
 # util data ---
-# gene_info <- "/Users/andrealauria/epigen/data/datasets/annotations/hg38/gencode.v32.gene.info.tsv"
-gene_info <- paste0(DATADIR,"/gencode.v32.gene.info.tsv")
-
+gene_info <- paste0(datadir,"/gencode.v32.gene.info.tsv")
 
 # output dirs ---
-FIGDIR  <- paste0(wd,"/Figures/scRNAseq/", analysis)
-RESDIR  <- paste0(wd,"/Results/scRNAseq/", analysis)
+FIGDIR  <- paste0(rootdir,"/Figures/scRNAseq/", analysis)
+RESDIR  <- paste0(rootdir,"/Results/scRNAseq/", analysis)
 
-suppressWarnings(suppressMessages(require(RNAseqRtools)))
 suppressWarnings(suppressMessages(require(scRNAseqRtools)))
 
 if(!dir.exists(FIGDIR)) dir.create(FIGDIR, recursive = T)
@@ -42,14 +38,13 @@ get_palette_features <- function(metadata_features)
 }
 
 #' ### 1. Alignment statistics
-#' Visualize alignment results
+#' Visualize reads alignment results, summarize by sample features.
 # 1. Alignment statistics ----
-
 metadata <- read.delim(path_metadata, stringsAsFactors = F)
 # mapping stats ---
 mapping_stats <- read_stats(statdir = path_mapping_stats
                             , metadata = path_metadata
-                            , type = 'hisat')
+                            , pipeline = 'hisat')
 
 metadata_features <- c('instrument_model','cell.type.ch1')
 palette_features  <- get_palette_features(metadata_features)
@@ -79,32 +74,31 @@ pdf(file = outfile, paper = "a4r", useDingbats = F, w=unit(3.5,'cm'), height = u
 p_overall_stat
 dev.off()
 
-#' ### 2. Biotype statistics 
-#' Visualize alignment statistics per transcript categories
+#' ### 2. Gene biotype statistics 
+#' Genes/transcripts QC alignment results. Visualize alignment statistics per transcript categories and sample features.
 # 2. Gene biotype stats ----
 biotypes_stats <- calc_gene_biotype_stats(count_matrix = path_counts
                                          , gene_info = gene_info
                                          , metadata = path_metadata
-                                         , type = 'hisat'
+                                         , pipeline = 'hisat'
                                          , coverage_ngenes_th = 10)
-#+ fig.width=8, fig.height=8
+#+ fig.width=9, fig.height=20
 for(feature in metadata_features) {
-  p_biotypes_stats <- plot_all_stats_v2(gene_stats = biotypes_stats
+  p_biotypes_stats <- plot_all_stats_v3(gene_stats = biotypes_stats
                                         , save_plots = T
                                         , col_by = feature
                                         , th_assigned_reads = 100000
                                         , th_detected_genes = 2000
-                                        , th_protein_coding = 75
                                         , th_mitochondrial = 25
                                         , pal = palette_features[[feature]]
-                                        , outdir = FIGDIR, w=unit(4,'cm'),h=unit(4,'cm')
+                                        , outdir = FIGDIR, w=unit(7,'cm'),h=unit(4,'cm')
                                         , guide_legend_nrow = ceiling(length(unique(biotypes_stats[,feature]))/4))
 
   
   print(ggpubr::ggarrange(plotlist = p_biotypes_stats
-                    , ncol=2, nrow=2
+                    , ncol=1
                     , common.legend = TRUE
-                    , legend="bottom"))
+                    , legend="none"))
 }
 
 #' ### 3. QC selection
