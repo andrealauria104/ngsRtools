@@ -181,17 +181,15 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
   }
   
   # biotypes statistics ---
-  # mtidx <- c("ENSG00000198899", "ENSG00000198727", "ENSG00000198888",
-  #            "ENSG00000198886", "ENSG00000212907", "ENSG00000198786",
-  #            "ENSG00000198695", "ENSG00000198712", "ENSG00000198804",
-  #            "ENSG00000198763", "ENSG00000228253", "ENSG00000198938",
-  #            "ENSG00000198840")
-  
-  biotypes <- c('protein_coding', 'lincRNA|lnc', "rRNA")
-  names(biotypes) <- c('protein_coding','lncRNA','rRNA')
-  biotypes_idx    <- lapply(biotypes, function(i) intersect(gene_info[which(grepl(i,gene_info[,type_idx])), gene_idx],rownames(count_matrix)))
-  biotypes_idx[['mitochondrial']] <- intersect(grep("^MT-|^mt-",gene_info$gene_name, value = T),rownames(count_matrix))
-  # biotypes_idx[['mitochondrial']] <- subset(gene_info, gene_id%in%mtidx)$gene_name
+  if(is.null(biotypes)) {
+    biotypes <- c('protein_coding', 'lincRNA|lnc', "rRNA")
+    names(biotypes) <- c('protein_coding','lncRNA','rRNA')
+    biotypes_idx    <- lapply(biotypes, function(i) intersect(gene_info[which(grepl(i,gene_info[,type_idx])), gene_idx],rownames(count_matrix)))
+    biotypes_idx[['mitochondrial']] <- intersect(grep("^MT-|^mt-",gene_info$gene_name, value = T),rownames(count_matrix))
+  } else {
+    biotypes_idx    <- lapply(biotypes, function(i) intersect(gene_info[which(grepl(i,gene_info[,type_idx])), gene_idx],rownames(count_matrix)))
+    names(biotypes_idx) <- biotypes
+  }
   biotypes_stats  <- lapply(names(biotypes_idx), function(i) 
   {
     x <- biotypes_idx[[i]]
@@ -403,6 +401,7 @@ plot_overall_alignment_stats <- function(mapping_stats, size_cutoff)
 
 plot_all_stats_v3 <- function(gene_stats
                               , outdir = NULL
+                              , biotypes = NULL
                               , th_assigned_reads = 100000
                               , th_detected_genes = 2000
                               , th_protein_coding = NULL
@@ -460,13 +459,26 @@ plot_all_stats_v3 <- function(gene_stats
   p_detected <- ggpubr::annotate_figure(p_detected, top = textGrob(ptitle_detected, gp=gpar(fontsize=8,font=8)))
   
   # % biotypes ---
-  perc_biotypes <- c("perc_protein_coding","perc_lncRNA","perc_rRNA","perc_mitochondrial")
-  th_biotypes <- c("th_protein_coding","th_lncRNA","th_rRNA","th_mitochondrial")
-  names(th_biotypes) <- perc_biotypes
-  direction_biotypes <- c("greater","greater","less","less")
-  names(direction_biotypes) <- perc_biotypes
-  ptitle_biotypes <- paste0(c("Protein coding","lncRNA","rRNA","Mitochondrial")," genes")
-  names(ptitle_biotypes) <- perc_biotypes
+  if(is.null(biotypes)) {
+    perc_biotypes <- c("perc_protein_coding","perc_lncRNA","perc_rRNA","perc_mitochondrial")
+    th_biotypes <- c("th_protein_coding","th_lncRNA","th_rRNA","th_mitochondrial")
+    names(th_biotypes) <- perc_biotypes
+    direction_biotypes <- c("greater","greater","less","less")
+    names(direction_biotypes) <- perc_biotypes
+    ptitle_biotypes <- paste0(c("Protein coding","lncRNA","rRNA","Mitochondrial")," genes")
+    names(ptitle_biotypes) <- perc_biotypes
+  } else {
+    perc_biotypes <- paste0("perc_",biotypes)
+    th_biotypes <- paste0("th_",biotypes)
+    names(th_biotypes) <- perc_biotypes
+    direction_biotypes <- rep("greater",length(biotypes))
+    names(direction_biotypes) <- perc_biotypes
+    for(i in 1:length(th_biotypes)) {
+      assign(th_biotypes[i],NULL)
+    }
+    ptitle_biotypes <- paste0(gsub("perc_|\\_"," ",perc_biotypes)," genes")
+    names(ptitle_biotypes) <- perc_biotypes
+  }
   
   p_biotypes <- list()
   for(i in perc_biotypes) {

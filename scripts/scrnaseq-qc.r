@@ -16,10 +16,10 @@ Options:
    -m, --metadata Path to experiment metadata.
    -g, --gencode Path to GENCODE gene/transcript biotype annotation table.
    -p, --pipeline Pipeline used for data processing (hisat/salmon/star) [default: hisat].
-   -b, --biotype Gene biotype (comma separated) for diagnostic plots. 
+   -b, --biotype Gene biotype (comma separated if > 1) for diagnostic plots. 
                  Protein coding, lncRNA, rRNA and mitochondrial genes 
                  are reported by default.
-   -f, --features Color cells by feature in metadata.
+   -f, --features Color cells by feature (comma separated if > 1) in metadata.
    -a, --analysis Project title [default: scRNA-seq].
    -o, --outdir Output directory. [default: .]
 ' -> doc
@@ -40,13 +40,13 @@ path_counts   <- as.character(opts$counts)
 path_metadata <- as.character(opts$metadata)
 
 # util data ---
-biotype  <- as.character(opts$biotype)
+biotype  <- opts$biotype
 gencode  <- as.character(opts$gencode)
 pipeline <- as.character(opts$pipeline)
 metadata_features <- as.character(opts$features)
 outdir   <- as.character(opts$outdir)
-analysis <- as.character(opts$analysis
-                         )
+analysis <- as.character(opts$analysis)
+
 # directories ---
 FIGDIR <- paste0(outdir,"/Figures/", analysis)
 RESDIR <- paste0(outdir,"/Results/", analysis)
@@ -58,6 +58,13 @@ if(!dir.exists(RESDIR)) dir.create(RESDIR, recursive = T)
 # requirements ---
 suppressWarnings(suppressMessages(require(scRNAseqRtools)))
 # helper functions 
+get_comma_arglist <- function(argument)
+{
+  if(!is.null(argument) && grepl("\\,",argument)) {
+    argument <- unlist(strsplit(argument,"\\,"))
+  }
+  return(argument)
+}
 get_palette_features <- function(metadata_features)
 {
   pals <- ls('package:ggsci', pattern = 'pal')[1:length(metadata_features)]
@@ -72,7 +79,9 @@ get_palette_features <- function(metadata_features)
 #' ### 1. Alignment statistics
 #' Visualize reads alignment results, summarize by sample features.
 # 1. Alignment statistics ----
-metadata <- read.delim(path_metadata, stringsAsFactors = F)
+metadata_features <- get_comma_arglist(metadata_features)
+biotype <- get_comma_arglist(biotype)
+
 # mapping stats ---
 mapping_stats <- read_stats(statdir = path_mapping_stats
                             , metadata = path_metadata
@@ -110,12 +119,15 @@ dev.off()
 # 2. Gene biotype stats ----
 biotypes_stats <- calc_gene_biotype_stats(count_matrix = path_counts
                                          , gene_info = gencode
+                                         , biotypes = biotype
                                          , metadata = path_metadata
                                          , pipeline = pipeline
                                          , coverage_ngenes_th = 10)
+print(head(biotypes_stats))
 #+ fig.width=9, fig.height=20
 for(feature in metadata_features) {
   p_biotypes_stats <- plot_all_stats_v3(gene_stats = biotypes_stats
+                                        , biotypes = biotype
                                         , save_plots = T
                                         , col_by = feature
                                         , th_assigned_reads = 100000
