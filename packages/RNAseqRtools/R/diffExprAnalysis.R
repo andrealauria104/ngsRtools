@@ -903,6 +903,48 @@ analyze_relative_expression <- function(genes, dea, time_0 = "T0h", facet_formul
   return(list("p" = p, "data" = efc))
 } 
 
+plotExpression <- function(y, gene, experimental_info
+                           , expression.unit = "CPM"
+                           , group.by=NULL
+                           , plot.type="bar"
+                           , pal=NULL) 
+{
+  if(length(gene)>1) {
+    toplot <- reshape2::melt(y[[expression.unit]][gene,], varnames=c("gene","sample"))
+  }else {
+    toplot <- reshape2::melt(y[[expression.unit]][gene,])
+    toplot$sample <- rownames(toplot)
+    toplot$gene <- gene
+  }
+  if(!is.null(group.by)) {
+    message(" -- averaging over groups: ", group.by)
+    
+    toplot$group <- experimental_info[,group.by]
+    toplot <- ddply(toplot, .(gene, group)
+                    , summarize
+                    , av = mean(value)
+                    , sd = sd(value)/sqrt(length(value)))
+    colnames(toplot)[which(colnames(toplot)=="group")] <- group.by
+    if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,group.by])))
+    if(plot.type=="bar") {
+      p <- ggplot(toplot, aes_string(x=group.by,y="av", fill=group.by))+ geom_col(lwd = 0.25) +
+        geom_errorbar(aes(ymax=av+sd, ymin=av-sd), size=0.2, width=0.3,linetype="dashed", lwd = 0.25, position = position_dodge(width = 0.8)) +
+        facet_wrap(~gene, scales = "free_y", ncol = 4) + theme_bw() + my_theme_2 +
+        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), axis.text.x = element_blank(), strip.text = element_text(face = "bold", size = 8)) +
+        scale_fill_manual(values = pal) + ylab(paste0("average ",toupper(expression.unit)))
+    }
+  } else {
+    if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,"sample"])))
+    if(plot.type=="bar") {
+      p <- ggplot(toplot, aes(x=sample, y=value, fill=sample))+ geom_col(lwd = 0.25,width=0.9) +
+        facet_wrap(~gene, scales = "free_y", ncol = 4) + theme_bw() + my_theme_2 +
+        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), axis.text.x = element_blank(), strip.text = element_text(face = "plain", size = 8)) +
+        scale_fill_manual(values = pal) + ylab(toupper(expression.unit))
+    }
+  }
+  
+  return(p)
+}
 # DESeq2 ---
 calculateDiffExprDESeq2 <- function(counts
                                     , info_analysis

@@ -124,6 +124,36 @@ build_expression_matrix <- function(path_quant, path_qc_cells = NULL
   return(list("quant" = m, "info" = qc_cells))
 }
 
+# Prepare SingleCellExperiment object ----
+prepare_sce <- function(counts, experimental_info, gene_info
+                        , biotype = NULL
+                        , outfile = NULL
+                        , filter.counts.th = 1
+                        , filter.cell.th = 1) 
+{
+  sce <- SingleCellExperiment::SingleCellExperiment(
+    assays = list(
+      'counts' = as.matrix(counts)
+    )
+    , colData = experimental_info
+  )
+  rowData(sce) <- gene_info[match(rownames(counts), gene_info$feature_symbol),]
+  
+  if(!is.null(biotype)) {
+    keep <- which(rowData(sce)$gene_type%in%biotype)
+    sce  <- sce[keep,]
+  }
+  
+  keep <- which(rowSums(counts(sce) >= filter.counts.th) >= filter.cell.th)
+  sce  <- sce[keep,]
+  
+  if(!is.null(outfile)) {
+    message(" -- saving as: ", outfile)
+    saveRDS(sce, file = outfile)
+  }
+  return(sce)
+}
+
 # Prepare monocle object ----
 prepare_cds_from_sce <- function(sce, pre.normalized = T)
 {

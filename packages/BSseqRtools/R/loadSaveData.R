@@ -185,7 +185,7 @@ create_begraph <- function(mtr.ratio, outfile, samp)
   
   bg <- data.frame('chr' = chr, 'start' = start, 'end' = end)
   bg <- cbind.data.frame(bg, mtr.ratio)
-  sidx <- grep(samp, colnames(bg))
+  sidx <- grep(paste0("^",samp,"$"), colnames(bg))
   
   setstring <- paste0("track type=bedGraph name='",outfile,"' description='methratio' visibility=full color=204,0,0 altColor=0,0,153 maxHeightPixels=80:80:11")
   sink(file = "tmp_1.bg", append = F)

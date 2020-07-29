@@ -47,7 +47,13 @@ get_heatmap3 <- function(m
     ha_column <- new("HeatmapAnnotation")
   }
   
-  if(is.null(myLegend)) myLegend <- "TPM" 
+  if(is.null(myLegend)) myLegend <- "RPKM" 
+  
+  if(scale) {
+    myLegend_title <- paste0("Z-score (",myLegend,")")
+  } else {
+    myLegend_title <- myLegend
+  }
   
   hm <- ComplexHeatmap::Heatmap(m_scaled, col = ramp,
                                 # show_row_dend = T,
@@ -55,7 +61,7 @@ get_heatmap3 <- function(m
                                 row_names_gp = gpar(fontsize=text_size),
                                 column_names_gp = gpar(fontsize=text_size),
                                 column_title_gp = gpar(fontsize=10, fontface="bold"),
-                                heatmap_legend_param = list(title = paste0("Z-score (",myLegend,")"),
+                                heatmap_legend_param = list(title = myLegend_title,
                                                             title_gp = gpar(fontsize=text_size),
                                                             title_position = "topcenter",
                                                             legend_width  = unit(3, "cm"),

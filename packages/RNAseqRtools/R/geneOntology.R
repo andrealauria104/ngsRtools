@@ -57,6 +57,8 @@ plotGObars <- function(go, tool='clusterProfiler', ntop=NULL, ...)
   }
   
   if( tool == 'gprofiler') {
+    go$term.name <- factor(go$term.name, 
+                             levels = go$term.name[order(go$p.value, decreasing = T)])
     ggplot(go, aes(x=term.name, y=-log10(p.value))) + geom_col(position = "dodge") +
       coord_flip() + theme_bw() + my_theme + theme(panel.grid = element_blank())
   } else if( tool == 'clusterProfiler') {

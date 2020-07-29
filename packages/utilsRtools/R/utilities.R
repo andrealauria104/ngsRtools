@@ -194,6 +194,31 @@ mbind <- function(...){
   Reduce( function(x,y){cbind(x,y[match(row.names(x),row.names(y)),])}, list(...) )
 }
 
+# Read Excel spreadsheets ----
+read_sheetfile <- function(sheetfile, sstart = 1)
+{
+  # Read Excel workbook
+  rsheetfile <- tryCatch(
+    { 
+      wb      <- xlsx::loadWorkbook(sheetfile) 
+      sheets  <- names(xlsx::getSheets(wb)) # retrive sheet names
+      rsheets <- lapply(sheets, function(sheetname) 
+      {
+        y <- suppressWarnings(xlsx::read.xlsx(sheetfile, sheetName = sheetname, startRow = sstart, stringsAsFactors = F))
+        naidx <- which(apply(y, 1, function(x) all(is.na(x))))
+        if(length(naidx)>0) y <- y[-naidx,]
+        return(y)
+      })
+      names(rsheets) <- gsub("[[:space:]]","",sheets)
+      return(rsheets)
+    }, 
+    error = function(e) {
+      message(e)
+      return(NA)
+    } ) # read sheets
+  return(rsheetfile)
+}
+
 # Histogram ----
 calc_binwidth <- function(x, rule = 'Freedman-Diaconis') 
 {
