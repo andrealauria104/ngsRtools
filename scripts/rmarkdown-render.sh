@@ -23,7 +23,7 @@ if [ -z "${RSCRIPT}" ]; then
     usage
 fi
 
-if [ ${RARGS} = "-h" ]; then
+if [[ ${RARGS} == "-h" ]]; then
     if [ -x ${RSCRIPT} ]; then
       Rscript --vanilla ${RSCRIPT} ${RARGS}
     else
@@ -38,6 +38,6 @@ echo ""
 echo " -- Output directory: ${OUTPUTDIR}"
 echo ""
 
-echo Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', output_dir='${OUTPUTDIR}')" ${RARGS}
+echo Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', intermediates_dir='${PWD}', output_dir='${OUTPUTDIR}')" ${RARGS}
 
-Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', output_dir='${OUTPUTDIR}')" ${RARGS}
+Rscript --vanilla -e "rmarkdown::render('${RSCRIPT}', intermediates_dir='${PWD}', output_dir='${OUTPUTDIR}')" ${RARGS}
