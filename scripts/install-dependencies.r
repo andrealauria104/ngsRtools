@@ -25,7 +25,7 @@ if(length(cran_not_installed)>0) {
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager", repos = CRAN)
 
 bioconductor_pkgs <- c('ComplexHeatmap','Biostrings','GenomicRanges','genomation',
-                       'BiocGenerics', 'scater', 'scran', 'SC3', 'monocle',
+                       'BiocGenerics', 'scater', 'scran', 'SC3', 'monocle','DSS',
                        'SingleCellExperiment','edgeR','DESeq2', 'sva','clusterProfiler',
                        'org.Mm.eg.db', 'org.Hs.eg.db','methylKit','S4Vectors','IRanges')
 
