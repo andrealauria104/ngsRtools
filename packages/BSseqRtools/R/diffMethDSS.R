@@ -71,13 +71,15 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
                            , dmr.minCG=3
                            , dmr.dis.merge=100
                            , dmr.pct.sig=0.5
-                           , n.cores=1) 
+                           , n.cores=1
+                           , outdir=NULL
+                           , analysis=NULL) 
 {	
-  message(" [+] DSS for two-group comparisons")
-  message(" [+] Running DMLtest, parameters:")
+  message("\n[*] DSS for two-group comparisons [*]")
+  message("\n[+] DMLtest, parameters:")
   message(" -- smoothing = ", smoothing)
   if(smoothing) message(" -- smoothing.span = ",smoothing.span)
-  message(" -- comparison: ", group1, " vs ", group2)
+  message(" -- comparison: ", group1, "-vs-", group2)
   
   dmlTest <- DSS::DMLtest(BSobj
                           , group1=group1
@@ -87,7 +89,7 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
                           , smoothing.span=smoothing.span
                           , BPPARAM=MulticoreParam(workers=n.cores, progressbar=TRUE))
   
-  message(" [+] Running callDML, parameters:")
+  message("\n[+] callDML, parameters:")
   message(" -- dml.delta = ",dml.delta)
   message(" -- dml.p.threshold = ", dml.p.threshold)
   message(" -- dmr.delta = ", dmr.delta)
@@ -101,19 +103,33 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
                        , delta=dml.delta
                        , p.threshold=dml.p.threshold)
   
-  message(" [+] Running callDMR, parameters:")
+  message("\n[+] callDMR, parameters:")
   message(" -- dmr.minlen = ", dmr.minlen)
   message(" -- dmr.minCG = ", dmr.minCG)
   message(" -- dmr.dis.merge = ", dmr.dis.merge)
   message(" -- dmr.pct.sig = ", dmr.pct.sig)
   
-  dmrs <- callDMR(dmlTest
-                  , delta=dmr.delta
-                  , p.threshold=dmr.p.threshold
-                  , minlen=dmr.minlen
-                  , minCG=dmr.minCG
-                  , dis.merge=dmr.dis.merge
-                  , pct.sig=dmr.pct.sig)
+  dmrs <- DSS::callDMR(dmlTest
+                       , delta=dmr.delta
+                       , p.threshold=dmr.p.threshold
+                       , minlen=dmr.minlen
+                       , minCG=dmr.minCG
+                       , dis.merge=dmr.dis.merge
+                       , pct.sig=dmr.pct.sig)
+  
+  if(!is.null(outdir)) {
+    output_suffix <- paste0("delta_",dml.delta,"_p_",dml.p.threshold)
+    if(!is.null(analysis)) output_suffix <- paste0(analysis,"_",output_suffix)
+    outfile <- paste0(outdir,"/dssDML_",output_suffix,".txt")
+    message("\n[+] writing DML result to file: ", outfile)
+    write.table(dmls, file=outfile, row.names=F, col.names=T, sep = "\t", quote=F)
+    
+    output_suffix <- paste0("delta_",dmr.delta,"_p_",dmr.p.threshold)
+    if(!is.null(analysis)) output_suffix <- paste0(analysis,"_",output_suffix)
+    outfile <- paste0(outdir,"/dssDMR_",output_suffix,".txt")
+    message("[+] writing DMR result to file: ", outfile)
+    write.table(dmrs, file=outfile, row.names=F, col.names=T, sep = "\t", quote=F)
+  }
   
   return(list("dmlTest"=dmlTest, "dmls"=dmls, "dmrs"=dmrs))
 }
