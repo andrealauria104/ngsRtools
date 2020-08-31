@@ -307,6 +307,217 @@ plot_methratio_v2 <- function(mtr
   
 }
 
+plot_methratio_v3 <- function(mtratio
+                              , type='boxplot' # violin, bar, density, histogram
+                              , average = T
+                              , pal = NULL
+                              , experimental_info = NULL
+                              , col_by = NULL
+                              , facet_by = NULL
+                              , compare_dist = F
+                              , my_comparisons = NULL
+                              , facet.precedence = NULL
+                              , col.precedence = NULL
+                              , violin.style = 1)
+{
+  if(grepl('methyl', class(mtratio))) {
+    mtratio  <- methylKit::percMethylation(mtratio, rowids = T)
+  } 
+  
+  if(average & !is.list(mtratio)) mtratio <- get_average_methylation(mtratio)
+  
+  mtratio <- reshape2::melt(mtratio, varnames = c('position','sample'), value.name = 'methratio')
+  mtratio$sample <- factor(mtratio$sample, levels =unique(mtratio$sample))
+  
+  if(any(grepl("L1", colnames(mtratio))) & !is.null(facet.precedence)) {
+    mtratio$L1 <- factor(mtratio$L1, levels = facet.precedence) 
+  }
+  if(!is.null(facet_by)) {
+    mtratio$time <- sapply(strsplit(as.character(mtratio$sample), "\\_"), "[[", facet_by) 
+    if(!is.null(facet.precedence)) {
+      tryCatch({mtratio$time <- factor(mtratio$time, levels = facet.precedence)}
+               , error = function(e) message("[!] Invalid facet.precedence!"))
+    }
+  } else {
+    mtratio$time <- mtratio$sample
+  }
+  
+  if(!is.null(col_by)) {
+    if(length(col_by)>1) {
+      condition <- sapply(1:length(col_by), function(x) sapply(strsplit(as.character(mtratio$sample), "\\_"), "[[", col_by[x]))
+      mtratio$condition <- apply(condition,1,paste0,collapse="_")
+    } else {
+      mtratio$condition <- sapply(strsplit(as.character(mtratio$sample), "\\_"), "[[", col_by)   
+    }
+  } else {
+    mtratio$condition <- mtratio$sample
+  }
+  
+  if(!average & any(grepl("_rep(\\_)?\\d+|_replicate_", unique(mtratio$sample), ignore.case = T)) && !(type%in%c("density","histogram"))){
+    mtratio$tmp <- mtratio$condition
+    mtratio$condition <- mtratio$sample
+    mtratio$sample <- mtratio$tmp
+    mtratio$sample <- gsub("_rep(\\_)?\\d+|_replicate_","",mtratio$sample)
+    mtratio$tmp <- NULL
+    mtratio$condition <- gsub("_","-",mtratio$condition)
+    mtratio$condition <- factor(mtratio$condition, levels = unique(mtratio$condition))
+    dist_theme <- theme(axis.text.x = element_text(angle=45,hjust = 1,vjust=1), axis.title.x = element_blank(), legend.key.size = unit(4,'mm'))
+    mtratio$sample <- factor(mtratio$sample, levels = unique(mtratio$sample))
+    levels(mtratio$sample) <- gsub("_","-",levels(mtratio$sample))
+  } else if(any(grepl("_rep(\\_)?\\d+|_replicate_", unique(mtratio$sample), ignore.case = T)) && type%in%c("density","histogram")) {
+    stop(message("[!] Please provide average values for density/histogram plots with replicates."))
+  } else {
+    levels(mtratio$sample) <- gsub("_","-",levels(mtratio$sample))
+  }
+  
+  if(!is.null(col.precedence)) {
+    if(length(col.precedence)==length(unique(mtratio$condition))) {
+      mtratio$condition <- factor(mtratio$condition, levels = col.precedence)
+      levels(mtratio$condition) <- gsub("_","-",levels(mtratio$condition))
+    }
+  }
+  
+  if(type=='boxplot') {
+    p <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) +  
+      geom_boxplot(notch = T, outlier.shape = NA, width=0.6, lwd=0.25) + theme_bw() + my_theme + 
+      theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8)) + scale_y_continuous(breaks = c(0,20,40,60,80,100)) +
+      guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
+      scale_fill_manual(values = pal) + ylab("Methylation [%]") 
+    if(any(grepl("(\\_|\\-)rep(\\_|\\-)?\\d+|(\\_|\\-)replicate(\\_|\\-)", levels(mtratio$condition), ignore.case = T))) p <- p + dist_theme
+    if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test", hide.ns = T) 
+  } else if(type=='violin') {
+    if(any(grepl("L1", colnames(mtratio)))) {
+      facet_formula <- paste0("L1~time")
+      p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) + facet_wrap(as.formula(facet_formula), scales = "free_x")
+    } else if(!is.null(facet_by)){
+      facet_formula <- "~time"
+      p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample)) + facet_wrap(as.formula(facet_formula), scales = "free_x")
+    } else {
+      p0 <- ggplot(mtratio, aes(x=condition, y=methratio, fill=sample))
+    }
+    dodge <- position_dodge(width = 0.8)
+    if(violin.style==1) {
+      p <- p0 +
+        geom_violin(trim = T, position = dodge, lwd = 0.25, alpha = 0.7) + 
+        geom_boxplot(width=0.08, outlier.color = NA, position = dodge, lwd = 0.25, show.legend = F, alpha = 0.7) + 
+        stat_summary(fun.y=median, geom="point", size=0.5, color="black", position = dodge, show.legend = F) +
+        theme_classic() + my_theme +
+        theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8)
+              , panel.grid = element_blank()
+              , strip.background.y = element_blank()
+              , strip.background.x = element_rect(size=0.25)) + guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
+        scale_fill_manual(values = pal) + ylab("% CG methylation")  + scale_y_continuous(breaks = c(0,50,100), limits = c(0,100))  
+    } else if(violin.style==2) {
+      p <- p0 +
+        geom_violin(aes(col=sample), trim=T, fill="white") + 
+        theme_bw() + my_theme_2 + scale_color_manual(values = pal) + 
+        stat_summary(fun.y=median, geom="point", size=1, color="red",  position = dodge, show.legend = F) +
+        guides(col=guide_legend(nrow=2)) + theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8), legend.key.size = unit(4,'mm')) +
+        ylab("Methylation [%]")  + scale_y_continuous(breaks = c(0,50,100))   
+      if(any(grepl("(\\_|\\-)rep(\\_|\\-)?\\d+|(\\_|\\-)replicate(\\_|\\-)", levels(mtratio$condition), ignore.case = T))) p <- p + dist_theme
+      if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test", hide.ns = T)
+    }
+    
+  }else if(type=='density'){
+    if(any(grepl("L1", colnames(mtratio)))) {
+      facet_formula <- paste0("L1~time")
+    } else {
+      facet_formula <- "~time"
+    }
+    dodge <- position_dodge(width = 0.8)
+    p <- ggplot(mtratio, aes(x=methratio, fill=sample)) + facet_grid(as.formula(facet_formula), scales = 'free_y') +
+      geom_density(lwd = 0.25, alpha = 0.6) +
+      theme_classic() + my_theme +
+      theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8)
+            , panel.grid = element_blank()
+            , strip.background.y = element_blank()
+            , strip.background.x = element_rect(size=0.25)
+            # , axis.title.y = element_blank()
+            , axis.text.y = element_blank()) + guides(fill = guide_legend(nrow=2)) +
+      scale_fill_manual(values = pal) + xlab("% CG methylation") 
+    # scale_x_continuous(breaks = c(0,50,100), limits = c(0,100))  
+  }else if(type=='histogram') {
+    if(any(grepl("L1", colnames(mtratio)))) {
+      facet_formula <- paste0("L1~time")
+    } else {
+      facet_formula <- "~time"
+    }
+    dodge <- position_dodge(width = 0.8)
+    p <- ggplot(mtratio, aes(x=methratio, fill=sample)) + facet_grid(as.formula(facet_formula), scales = 'free_y') +
+      geom_histogram(lwd = 0.25, alpha = 0.6, binwidth = 10, col = 'black') +
+      theme_classic() + my_theme +
+      theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8)
+            , panel.grid = element_blank()
+            , strip.background.y = element_blank()
+            , strip.background.x = element_rect(size=0.25)
+            # , axis.title.y = element_blank()
+            # , axis.text.y = element_blank()
+      ) + guides(fill = guide_legend(nrow=2)) +
+      scale_fill_manual(values = pal) + xlab("% CG methylation") + ylab("CG count")
+  }else if(type=="summary"){
+    
+    if(!average & any(grepl("-rep(\\-)?\\d+|-replicate-", levels(mtratio$condition), ignore.case = T))) {
+      mtratio.sm <- ddply(mtratio, as.formula("~condition")
+                          , summarize
+                          , mean = mean(methratio, na.rm=T)
+                          , median = median(methratio, na.rm=T)
+                          , min = min(methratio, na.rm=T)
+                          , max = max(methratio, na.rm=T)
+                          , sd  = sd(methratio, na.rm=T)
+                          , l = length(methratio)
+                          , se = sd(methratio, na.rm=T)/sqrt(length(methratio))
+                          , se.md = 1.253*sd(methratio, na.rm=T)/sqrt(length(methratio)))
+      mtratio.sm$group <- gsub("-Rep.*","",mtratio.sm$condition,ignore.case = T)
+      
+      mtratio.sm <- ddply(mtratio.sm, .(group)
+                          , mutate
+                          , mean.mean = mean(mean, na.rm=T)
+                          , se.mean = sd(mean, na.rm=T)/sqrt(length(mean))
+                          , sd.mean = sd(mean, na.rm=T))
+      mtratio.sm$group <- factor(mtratio.sm$group, levels =  gsub("_","-",col.precedence))
+      
+      p <- ggplot(mtratio.sm,aes(x=group, y=mean, fill=group)) +  
+        geom_col(aes(x=group, y=mean.mean, fill=group),position = 'dodge', size = 0.1, col = 'black', width = 0.6) +
+        geom_point(aes(x=group, y=mean, fill=group), show.legend=F, size = .5, position = position_jitterdodge(dodge.width = 0.3))+
+        theme_bw() + my_theme + geom_text(aes(x=group, y=mean.mean,label=round(mean.mean,2)), size=2, nudge_y = 7)+ 
+        theme(axis.text.x = element_text(angle=45,hjust = 1,vjust=1),plot.title = element_text(face="plain", hjust = 0.5, size = 8), axis.title.x = element_blank(), legend.key.size = unit(4,'mm'), legend.position = "none") +
+        scale_fill_manual(values = pal) + ylab("Average methylation [%]")  + ylim(c(0,100))
+      if(compare_dist) p <- p + stat_compare_means(data=mtratio.sm, mapping = aes(x=group, y=mean, fill=group),comparisons = my_comparisons,size=2, method = "t.test",inherit.aes = F, label.y = c(78, 85, 90,95))
+    } else {
+      # mtratio.sm <- ddply(mtratio, as.formula("~condition")
+      #                     , summarize
+      #                     , mean = mean(methratio, na.rm=T)
+      #                     , median = median(methratio, na.rm=T)
+      #                     , min = min(methratio, na.rm=T)
+      #                     , max = max(methratio, na.rm=T)
+      #                     , sd  = sd(methratio, na.rm=T)
+      #                     , l = length(methratio)
+      #                     , se = sd(methratio, na.rm=T)/sqrt(length(methratio))
+      #                     , se.md = 1.253*sd(methratio, na.rm=T)/sqrt(length(methratio)))
+      # mtratio.sm$group <- mtratio.sm$condition
+      # p <- ggplot(mtratio.sm, aes(x=group, y=mean, fill=group)) +  
+      #   geom_col(position = 'dodge', size = 0.1, col = 'black', width = 0.6) + 
+      #   geom_errorbar(
+      #     aes(ymin=mean-se, ymax=mean+se)
+      #     # aes(ymin=median-se.md, ymax=median+se.md)
+      #     , size=.25
+      #     , width=.2
+      #     , position=position_dodge(.6)) + 
+      #   theme_bw() + my_theme + 
+      #   theme(plot.title = element_text(face="bold", hjust = 0.5, size = 8)) +
+      #   scale_fill_manual(values = pal) + ylab("Average methylation [%]")  
+      stop(message("[!] Invalid summary plot type.")) 
+    }
+    
+  } else {
+    stop(message("[!] Invalid plot type. Please, provide one of # violin, boxplot, summary, density, histogram"))
+  }
+  
+  return(p)
+  
+}
+
+
 intersect_mtr <- function(mtr_x, mtr_y
                           , return.obj = "GRanges"
                           , return.merged = F)

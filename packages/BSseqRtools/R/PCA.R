@@ -60,10 +60,11 @@ plotMethPCA <- function(meth
     ylab(paste0(dim_2," (",round(pca_summary[2,grep(paste0(dim_2,"$"), colnames(pca_summary))]*100,1),"%)")) + 
     theme_bw() + ggtitle(default.title) + my_theme_2 +
     theme(panel.grid.minor = element_blank()
-          , plot.title = element_text(face="bold", hjust = 0.5, size=10)
-          , aspect.ratio = 1) +
+          , plot.title = element_text(face="plain", hjust = 0.5, size=8)
+          , aspect.ratio = 1
+          , legend.position = "right"
+          , legend.key.size = unit(4,'mm')) +
     scale_color_manual(values=pal)
-  
   
   if(labels) {
     p <- p + ggrepel::geom_label_repel(aes(label = rownames(pca_plot), col=repel_col_by),

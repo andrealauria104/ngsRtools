@@ -118,6 +118,7 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
                        , pct.sig=dmr.pct.sig)
   
   if(!is.null(outdir)) {
+    options(scipen=999) # disable scientific notation
     output_suffix <- paste0("delta_",dml.delta,"_p_",dml.p.threshold)
     if(!is.null(analysis)) output_suffix <- paste0(analysis,"_",output_suffix)
     outfile <- paste0(outdir,"/dssDML_",output_suffix,".txt")
@@ -129,6 +130,7 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
     outfile <- paste0(outdir,"/dssDMR_",output_suffix,".txt")
     message("[+] writing DMR result to file: ", outfile)
     write.table(dmrs, file=outfile, row.names=F, col.names=T, sep = "\t", quote=F)
+    options(scipen=0) # restore default
   }
   
   return(list("dmlTest"=dmlTest, "dmls"=dmls, "dmrs"=dmrs))
