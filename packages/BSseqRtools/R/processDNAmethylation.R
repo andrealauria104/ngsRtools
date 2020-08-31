@@ -384,7 +384,7 @@ plot_methratio_v3 <- function(mtratio
       guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +
       scale_fill_manual(values = pal) + ylab("Methylation [%]") 
     if(any(grepl("(\\_|\\-)rep(\\_|\\-)?\\d+|(\\_|\\-)replicate(\\_|\\-)", levels(mtratio$condition), ignore.case = T))) p <- p + dist_theme
-    if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test", hide.ns = T) 
+    if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test") 
   } else if(type=='violin') {
     if(any(grepl("L1", colnames(mtratio)))) {
       facet_formula <- paste0("L1~time")
@@ -415,7 +415,7 @@ plot_methratio_v3 <- function(mtratio
         guides(col=guide_legend(nrow=2)) + theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8), legend.key.size = unit(4,'mm')) +
         ylab("Methylation [%]")  + scale_y_continuous(breaks = c(0,50,100))   
       if(any(grepl("(\\_|\\-)rep(\\_|\\-)?\\d+|(\\_|\\-)replicate(\\_|\\-)", levels(mtratio$condition), ignore.case = T))) p <- p + dist_theme
-      if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test", hide.ns = T)
+      if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test")
     }
     
   }else if(type=='density'){
