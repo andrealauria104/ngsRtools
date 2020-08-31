@@ -10,7 +10,8 @@ my_theme <- theme(legend.position = "bottom"
                   , panel.grid.major = element_line(size=0.25)
                   , panel.grid.minor = element_blank()
                   , strip.text       = element_text(size=8)
-                  , strip.background = element_rect(fill = NA))
+                  , strip.background = element_rect(fill = NA)
+                  , plot.title = element_text(size = 8, hjust = 0.5, face = "plain"))
 # Theme 2 --
 my_theme_2 <- theme(legend.position = "bottom"
                   , line = element_line(size=0.5)
