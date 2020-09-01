@@ -51,6 +51,9 @@ analyze_pairwise_methyl_correlation <- function(mratio, xvar, yvar
     p0 <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
       geom_hex() + scale_fill_continuous(type = "viridis", limits=hex.scale.limits) +
       theme_bw() + my_theme
+  } else if(plot.type == "contour") {
+    p0 <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
+      geom_density_2d() + theme_bw() + my_theme
   }
   p <- p0 + ggtitle(ptitle) +
     xlab(paste0("% CG methylation in ",gsub(".*_","#",xvar))) +
