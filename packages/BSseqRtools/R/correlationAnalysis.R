@@ -32,7 +32,8 @@ analyze_pairwise_methyl_correlation <- function(mratio, xvar, yvar
                                                 , pal            = "RdYlBu"
                                                 , plot.type      = "density"
                                                 , density.limits = c(0,0.001)
-                                                , density.na.value = "red")
+                                                , density.na.value = "red"
+                                                , hex.scale.limits = NULL)
 {
   
   cor.test.res <- cor.test(x = mratio[,xvar], y = mratio[,yvar])
@@ -46,13 +47,19 @@ analyze_pairwise_methyl_correlation <- function(mratio, xvar, yvar
   } else if(plot.type=="scatter") {
     p0 <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
       geom_point(size = 1, alpha = 0.4) + theme_bw() + my_theme_2
+  } else if(plot.type=="hex"){
+    p0 <- ggplot(as.data.frame(mratio), aes_string(x=xvar, y=yvar) ) +
+      geom_hex() + scale_fill_continuous(type = "viridis", limits=hex.scale.limits) +
+      theme_bw() + my_theme
   }
   p <- p0 + ggtitle(ptitle) +
     xlab(paste0("% CG methylation in ",gsub(".*_","#",xvar))) +
     ylab(paste0("% CG methylation in ",gsub(".*_","#",yvar))) +
     theme(plot.title = element_text(size = 8, hjust = 0.5)
           , aspect.ratio = 1
-          , legend.position = 'none'
+          , legend.key.height = unit(4,'mm')
+          , legend.key.width = unit(5,'mm')
+          # , legend.position = 'none'
     ) +
     annotate("text", label = paste0("r = ",round(cor.test.res$estimate,2)), x = 30, y = 70, size = 2, col = "white")
   print(cor.test.res)
