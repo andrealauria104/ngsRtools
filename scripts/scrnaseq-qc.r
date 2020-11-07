@@ -122,7 +122,7 @@ biotypes_stats <- calc_gene_biotype_stats(count_matrix = path_counts
                                          , biotypes = biotype
                                          , metadata = path_metadata
                                          , pipeline = pipeline
-                                         , coverage_ngenes_th = 10)
+                                         , coverage_ngenes_th = 1)
 print(head(biotypes_stats))
 #+ fig.width=9, fig.height=20
 for(feature in metadata_features) {
