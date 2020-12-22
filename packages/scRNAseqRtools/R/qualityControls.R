@@ -235,7 +235,8 @@ plot_stats <- function(stats, vars, ptitle # vars = c(x-axis, y-axis, color)
                        , lim = c(0,100)
                        , pal = NULL
                        , ydirection = 'less' # greater
-                       , plot.type = 'scatter')
+                       , plot.type = 'scatter'
+		       , log_scale = F)
 {
   if(missing(vars)) {
     bw <- function(x) (2 * IQR(x) / length(x)^(1/3)) # Freedman–Diaconis rule
@@ -319,7 +320,13 @@ plot_stats <- function(stats, vars, ptitle # vars = c(x-axis, y-axis, color)
       p <- p + facet_grid(~title)
     }
   }
-  
+  if(log_scale) {
+    if(plot.type=="scatter") {
+    p <- p + scale_x_log10() + scale_y_log10()
+    } else {
+    p <- p + scale_y_log10()
+   }
+  }
   return(p)
 }
 
@@ -428,7 +435,8 @@ plot_all_stats_v3 <- function(gene_stats
                               , col_by = ''
                               , pal = NULL
                               , guide_legend_nrow = 2
-                              , ...)
+                              , log_scale = F
+                              ,...)
 {
   if(col_by!='') {
     p_guide_legend <- guides(col=guide_legend(nrow=guide_legend_nrow))
@@ -443,7 +451,8 @@ plot_all_stats_v3 <- function(gene_stats
                                     , xintercept = th_assigned_reads
                                     , lim = c(0,max(gene_stats$ngenes+1))
                                     , ydirection = "greater"
-                                    , pal = pal) + 
+                                    , pal = pal
+                                    , log_scale = log_scale) + 
                            ylab("N. of genes") + xlab("Assigned reads") + p_guide_legend
                          , error = function(e) {message(e);return(NA)})
   p_violin_assigned <- tryCatch(plot_stats(gene_stats
@@ -451,7 +460,8 @@ plot_all_stats_v3 <- function(gene_stats
                                     , vars = c(col_by, 'assigned_reads', col_by)
                                     , lim = c(0,max(gene_stats$assigned_reads+1))
                                     , ydirection = "greater"
-                                    , pal = pal) + 
+                                    , pal = pal
+			            , log_scale = log_scale) + 
                            xlab(col_by) + ylab("Assigned reads") + p_guide_legend
                          , error = function(e) {message(e);return(NA)})
   p_violin_ngenes <- tryCatch(plot_stats(gene_stats
@@ -459,7 +469,8 @@ plot_all_stats_v3 <- function(gene_stats
                                       , vars = c(col_by, 'ngenes', col_by)
                                       , lim = c(0,max(gene_stats$ngenes+1))
                                       , ydirection = "greater"
-                                      , pal = pal) + 
+                                      , pal = pal 
+                                      , log_scale = log_scale) + 
                                 ylab("N. of genes") + xlab(col_by) + p_guide_legend
                            , error = function(e) {message(e);return(NA)})
   if(length(unique(gene_stats[, col_by]))>2) {
