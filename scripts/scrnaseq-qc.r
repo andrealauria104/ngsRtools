@@ -8,7 +8,7 @@
 # Command line/Env variables ---
 suppressWarnings(suppressMessages(require(docopt)))
 'Usage:
-   scrnaseq-qc.r [-q <qcmatrix> -c <counts> -m <metadata> -g <gencode> -p <pipeline> -b <biotype> -f <features> -a <analysis> -o <outdir>]
+   scrnaseq-qc.r [-q <qcmatrix> -c <counts> -m <metadata> -g <gencode> -p <pipeline> -b <biotype> -f <features> -a <analysis> -l <logscale> -o <outdir>]
 
 Options:
    -q, --qcmatrix Path to QC matrix or multiQC output directory.
@@ -21,6 +21,7 @@ Options:
                  are reported by default.
    -f, --features Color cells by feature (comma separated if > 1) in metadata.
    -a, --analysis Project title [default: scRNA-seq].
+   -l, --logscale Logscale for plots [default: TRUE]
    -o, --outdir Output directory. [default: .]
 ' -> doc
 
@@ -46,7 +47,7 @@ pipeline <- as.character(opts$pipeline)
 metadata_features <- as.character(opts$features)
 outdir   <- as.character(opts$outdir)
 analysis <- as.character(opts$analysis)
-
+log_scale <- as.logical(opts$logscale)
 # directories ---
 FIGDIR <- paste0(outdir,"/Figures/", analysis)
 RESDIR <- paste0(outdir,"/Results/", analysis)
@@ -134,6 +135,7 @@ for(feature in metadata_features) {
                                         , th_detected_genes = 2000
                                         , th_mitochondrial = 25
                                         , pal = palette_features[[feature]]
+                                        , log_scale = log_scale    
                                         , outdir = FIGDIR, w=unit(7,'cm'),h=unit(4,'cm')
                                         , guide_legend_nrow = ceiling(length(unique(biotypes_stats[,feature]))/4))
 
