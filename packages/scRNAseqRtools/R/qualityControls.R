@@ -134,7 +134,7 @@ read_stats <- function(statdir
     } else if(dir.exists(statdir)) {
       stats_file <- list.files(statdir, pattern = 'star.txt$', full.names = T)
       mstats <- read.delim(stats_file, stringsAsFactors = F)
-      mstats$Sample <- gsub(".STAR","",mstats$Sample)
+      mstats$Sample <- gsub("(_S\\d+).STAR$","",mstats$Sample)
       mstats <- mstats[,c("Sample","uniquely_mapped_percent"
                           ,"multimapped_percent","uniquely_mapped"
                           ,"multimapped","total_reads")]
@@ -193,7 +193,7 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
     message(" -- reading gene info from: ", gene_info)
     gene_info <- read.delim2(gene_info, header = T, stringsAsFactors = F)
   }
-  
+  if(!type_idx%in%colnames(gene_info)) type_idx <- grep("type",colnames(gene_info),value=T) 
   # biotypes statistics ---
   if(is.null(biotypes)) {
     biotypes <- c('protein_coding', 'lincRNA|lnc', "rRNA")
@@ -222,8 +222,9 @@ calc_gene_biotype_stats <- function(count_matrix, DATADIR, gene_info
                          , cell_barcode = rownames(biotypes_stats)
                          , barcode_info = barcode_info
                          , additional_info = additional_info)
-  
-  biotypes_stats <- cbind.data.frame(mdata, biotypes_stats[match(mdata$Sample, rownames(biotypes_stats)),])
+  biotypes_stats$Sample <- rownames(biotypes_stats)
+  if(all(grepl("^X",mdata$Sample)!=grepl("^X",rownames(biotypes_stats)))) biotypes_stats$Sample <- gsub("^X","",biotypes_stats$Sample)
+  biotypes_stats <- merge(mdata, biotypes_stats, by="Sample")
   
   return(biotypes_stats)
 }
