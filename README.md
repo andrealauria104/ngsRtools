@@ -54,6 +54,21 @@ To uninstall the complete suite:
 cd ngsRtools
 ./uninstall.sh
 ```
+### Using Conda
+Clone the repository on your machine:
+```
+git clone https://github.com/andrealauria104/ngsRtools.git
+```
+Create conda environment from .yml file with all dependencies: 
+```
+cd ngsRtools
+conda env create -f data/environment.yml
+```
+Install the complete suite of packages:
+```
+cd ngsRtools
+./install.sh
+```
 ### Docker
 The suite can be used in a Docker container with all packages and scripts. Pull the image:
 ```
