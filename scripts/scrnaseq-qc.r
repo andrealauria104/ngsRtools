@@ -23,6 +23,7 @@ Options:
    -a, --analysis Project title [default: scRNA-seq].
    -l, --logscale Logscale for plots [default: TRUE]
    -o, --outdir Output directory. [default: .]
+   -d, --depth Coverage depth for detected genes. [default: 1]
 ' -> doc
 
 opts <- docopt(doc)
@@ -48,6 +49,8 @@ metadata_features <- as.character(opts$features)
 outdir   <- as.character(opts$outdir)
 analysis <- as.character(opts$analysis)
 log_scale <- as.logical(opts$logscale)
+coverage_ngenes_th <- as.integer(opts$depth)
+
 # directories ---
 FIGDIR <- paste0(outdir,"/Figures/", analysis)
 RESDIR <- paste0(outdir,"/Results/", analysis)
@@ -77,30 +80,41 @@ get_palette_features <- function(metadata_features)
 #' ---
 #' title: `r eval(analysis)`
 #' ---
-#' ### 1. Alignment statistics
-#' Visualize reads alignment results, summarize by sample features.
-# 1. Alignment statistics ----
+#' ### 1. Read data
+#' Read input data for QC
 metadata_features <- get_comma_arglist(metadata_features)
 biotype <- get_comma_arglist(biotype)
+palette_features  <- get_palette_features(metadata_features)
 
-# mapping stats ---
 mapping_stats <- read_stats(statdir = path_mapping_stats
                             , metadata = path_metadata
                             , pipeline = pipeline)
 
-palette_features  <- get_palette_features(metadata_features)
+biotypes_stats <- calc_gene_biotype_stats(count_matrix = path_counts
+                                          , gene_info = gencode
+                                          , biotypes = biotype
+                                          , metadata = path_metadata
+                                          , pipeline = pipeline
+                                          , coverage_ngenes_th = coverage_ngenes_th)
 
-#+ fig.width=8, fig.height=8
+mapping_stats$Assigned <- biotypes_stats$assigned_reads[match(mapping_stats$Sample,biotypes_stats$Sample)]
+mapping_stats$Assigned_rate_total <- round(100*mapping_stats$Assigned/mapping_stats$Total_reads,2)
+mapping_stats$Assigned_rate_uniqmap <- round(100*mapping_stats$Assigned/mapping_stats$Uniquely_mapped,2)
+
+#' ### 1. Alignment statistics
+#' Visualize reads alignment results, summarize by sample features.
+# mapping stats ---
+#+ fig.width=8, fig.height=10
 for(feature in metadata_features) {
   
-  p_map_stats_feature <- plot_mapping_stats(mapping_stats
+  p_map_stats_feature <- plot_mapping_stats_v2(mapping_stats
                                             , color_by = feature
                                             , pal = palette_features[[feature]]
                                             , p_boxplot = T)
   print(p_map_stats_feature)
   outfile <- paste0(FIGDIR,"/Mapping_rate_colby_",feature,".pdf")
   message(" -- output file: ", outfile)
-  pdf(file = outfile, paper = "a4r", useDingbats = F, w=unit(6,'cm'), height = unit(6,'cm'))
+  pdf(file = outfile, paper = "a4r", useDingbats = F, w=unit(6,'cm'), height = unit(10,'cm'))
   print(p_map_stats_feature)
   dev.off()
   
@@ -117,14 +131,6 @@ dev.off()
 
 #' ### 2. Gene biotype statistics 
 #' Genes/transcripts QC alignment results. Visualize alignment statistics per transcript categories and sample features.
-# 2. Gene biotype stats ----
-biotypes_stats <- calc_gene_biotype_stats(count_matrix = path_counts
-                                         , gene_info = gencode
-                                         , biotypes = biotype
-                                         , metadata = path_metadata
-                                         , pipeline = pipeline
-                                         , coverage_ngenes_th = 1)
-print(head(biotypes_stats))
 #+ fig.width=9, fig.height=20
 for(feature in metadata_features) {
   p_biotypes_stats <- plot_all_stats_v3(gene_stats = biotypes_stats

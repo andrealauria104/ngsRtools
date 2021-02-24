@@ -385,6 +385,76 @@ plot_mapping_stats <- function(mapping_stats, color_by
   return(p_mapping_stats_arranged)
 }
 
+plot_mapping_stats_v2 <- function(mapping_stats, color_by
+                                  , xintercept = NULL
+                                  , yintercept = NULL
+                                  , p_boxplot = T
+                                  , ...) 
+{
+  
+  if(p_boxplot) {
+    stats_features <- c('Total_reads','Mapping_rate'
+                        ,'Uniquely_mapped','Uniquely_mapped_rate'
+                        ,'Assigned','Assigned_rate_total'
+                        ,'Assigned','Assigned_rate_uniqmap')
+    
+    lim_features <- lapply(stats_features, function(x) 
+    {
+      if(grepl("_rate",x,ignore.case = T)) {
+        lim_values <- c(0,100)
+      } else {
+        lim_values <- c(0,max(mapping_stats[,x])+1)
+      }
+      return(lim_values)
+    })
+    names(lim_features) <- stats_features
+    
+    log_scale_features <- !(grepl("_rate",stats_features,ignore.case = T))
+    names(log_scale_features) <- stats_features
+    
+    plist_mapping_stats <- lapply(stats_features, function(x) {
+      p <- plot_stats(mapping_stats
+                      , vars = c(color_by, x, color_by) # x-axis, y-axis, color
+                      , xintercept = xintercept # qc pass cutoff x
+                      , yintercept = yintercept # qc pass cutoff y
+                      , plot.type = 'boxplot'
+                      , lim = lim_features[[x]]
+                      , log_scale = log_scale_features[[x]]
+                      # , ...
+      )
+      if(length(unique(mapping_stats[, color_by]))>2) {
+        p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+      }
+      return(p)
+    })
+    names(plist_mapping_stats) <- stats_features
+    
+    p_mapping_stats_arranged <- ggpubr::ggarrange(plotlist = plist_mapping_stats
+                                                  , ncol=2, nrow=4
+                                                  , common.legend = TRUE
+                                                  , legend="bottom")
+  } else {
+    p_mapping_stats <- plot_stats(mapping_stats
+                                  , vars = c('Total_reads', 'Mapping_rate', color_by) # x-axis, y-axis, color
+                                  , xintercept = xintercept # qc pass cutoff x
+                                  , yintercept = yintercept # qc pass cutoff y
+                                  , ...) 
+    
+    p_mapping_stats_uniq <- plot_stats(mapping_stats
+                                       , vars = c('Total_reads', 'Uniquely_mapped_rate', color_by)  # x-axis, y-axis, color
+                                       , xintercept = xintercept # qc pass cutoff x
+                                       , yintercept = yintercept # qc pass cutoff y
+                                       , ...)
+    
+    p_mapping_stats_arranged <- ggpubr::ggarrange(p_mapping_stats, p_mapping_stats_uniq
+                                                  , ncol=2, nrow=1
+                                                  , common.legend = TRUE
+                                                  , legend="bottom")
+  }
+  
+  return(p_mapping_stats_arranged)
+}
+
 plot_overall_alignment_stats <- function(mapping_stats, size_cutoff)
 {
   custom_theme <- theme_light() + theme(text = element_text(size = 8)
