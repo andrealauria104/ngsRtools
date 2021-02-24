@@ -76,7 +76,7 @@ message(" -- reading data from: ", sheetfile)
 rsheetfile <- read_sheetfile(sheetfile = sheetfile, sstart = sstart)
 
 # 2. Write output to file ----
-if(output=="workbook.txt") output <- gsub("\\.xlsx","\\.txt",sheetfile)
+if(output=="workbook.txt") output <- gsub("\\.xls(x)?$","\\.txt",sheetfile)
 message(" -- writing data to: ", output)
 
 write_to_file(rsheetfile = rsheetfile, output = output)
