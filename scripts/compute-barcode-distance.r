@@ -54,6 +54,7 @@ read_sheetfile <- function(sheetfile, sheetName, startRow)
   if(class(rsheetfile)!="data.frame" || !any(grepl("Sample|index$|ID|id",colnames(rsheetfile)))) {
     stop(message("[!] Error reading file: ", sheetfile)) 
   } else {
+    rsheetfile$index <- toupper(rsheetfile$index) # avoid upper/lower case differences 
     return(rsheetfile) 
   }
 }
