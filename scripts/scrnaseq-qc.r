@@ -72,7 +72,10 @@ get_comma_arglist <- function(argument)
 get_palette_features <- function(metadata_features)
 {
   pals <- ls('package:ggsci', pattern = 'pal')[1:length(metadata_features)]
-  palette_features <- lapply(pals, function(p) get(p)()(9))
+  palette_features <- lapply(pals, function(p) {
+    rcb_pal <- sample(rownames(subset(RColorBrewer::brewer.pal.info,category=="div")),1)
+    c(get(p)()(9),RColorBrewer::brewer.pal(9,rcb_pal))
+  })
   names(palette_features) <- metadata_features
   return(palette_features)
 }

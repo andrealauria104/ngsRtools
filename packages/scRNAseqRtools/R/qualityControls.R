@@ -420,7 +420,7 @@ plot_mapping_stats_v2 <- function(mapping_stats, color_by
                       , plot.type = 'boxplot'
                       , lim = lim_features[[x]]
                       , log_scale = log_scale_features[[x]]
-                      # , ...
+                      , ...
       )
       if(length(unique(mapping_stats[, color_by]))>2) {
         p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
@@ -599,6 +599,9 @@ plot_all_stats_v3 <- function(gene_stats
                            ylab("% of reads") + xlab(col_by) + p_guide_legend
                          , error = function(e) {message(e);return(NA)})
     
+    if(length(unique(gene_stats[, col_by]))>2) {
+      p_violin <- p_violin + theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+    }
     p_biotypes[[i]] <- ggpubr::ggarrange(p_scatter,p_violin, common.legend = T, legend = "bottom")
     p_biotypes[[i]] <- ggpubr::annotate_figure(p_biotypes[[i]], top = textGrob(ptitle_biotypes[i], gp=gpar(fontsize=8,font=8)))
   }
