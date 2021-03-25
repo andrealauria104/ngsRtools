@@ -616,6 +616,47 @@ plot_all_stats_v3 <- function(gene_stats
   if(return_plots) return(plots_all)
 }
 
+# Quality Controls - Scran ----
+quantize_tech_feature <- function(sce, tech_quant_feature) 
+{
+  tech_quant_values <- quantile(colData(sce)[[tech_quant_feature]])
+  colData(sce)[[paste0("quant_",tech_quant_feature)]] <- cut(colData(sce)[[tech_quant_feature]]
+                                                             , breaks=c(-Inf, tech_quant_values[2], tech_quant_values[3], tech_quant_values[4], Inf)
+                                                             , labels=c("q1","q2","q3","q4"))
+  return(sce)
+}
+
+plot_qc_th <- function(sce, x_var, discard_var) 
+{
+  qc_th_plot_total_count <- plotColData(sce, x=x_var, y="sum", 
+                                        colour_by=discard_var) + scale_y_log10() + 
+    ggtitle("Total count") + theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  qc_th_plot_detected <- plotColData(sce, x=x_var, y="detected", 
+                                     colour_by=discard_var) + scale_y_log10() + 
+    ggtitle("Detected features") + theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  qc_th_plot_mito <- plotColData(sce, x=x_var, y="subsets_Mito_percent", 
+                                 colour_by=discard_var) + ggtitle("Mito percent") + 
+    theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  qc_th_plot_mito <- plotColData(sce, x=x_var, y="subsets_Mito_percent", 
+                                 colour_by=discard_var) + ggtitle("Mito percent") + 
+    theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  qc_th_plot_top <- plotColData(sce, x=x_var, y="percent_top_50", 
+                                colour_by=discard_var) + ggtitle("Top 50%") + 
+    theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  qc_th_plot_assigned_tot <- plotColData(sce, x=x_var, y="Assigned_rate_total", 
+                                         colour_by=discard_var) + ggtitle("Assigned rate - total") + 
+    theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  qc_th_plot_assigned_uniqmap <- plotColData(sce, x=x_var, y="Assigned_rate_uniqmap", 
+                                             colour_by=discard_var) + ggtitle("Assigned rate - uniquely mapped") + 
+    theme_bw() + my_theme_2 + theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+  #qc_plot_ercc <- plotColData(sce, x="block", y="altexps_ERCC_percent", 
+  #             colour_by=discard_var) + ggtitle("ERCC percent")
+  qc_th_plot_list <- list(qc_th_plot_total_count,qc_th_plot_detected,qc_th_plot_mito,qc_th_plot_top,qc_th_plot_assigned_tot,qc_th_plot_assigned_uniqmap)
+  qc_th_plots <- ggpubr::ggarrange(plotlist = qc_th_plot_list, common.legend = T, legend = "bottom", ncol=2,nrow=3, align = "hv")
+  
+  return(qc_th_plots)
+}
+
 # To be deprecated ----
 # to be deprecated 
 get_gene_stats <- function(DATADIR, gene_info
