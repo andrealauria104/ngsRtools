@@ -507,13 +507,13 @@ plotDiffExprRes <- function(de
       ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
       geom_label(
         data    = subset(tmp, status=="Up-regulated"),
-        mapping = aes(x = max(tmp$lfc)-1.5, y = 1, label = nup, col = status),
+        mapping = aes(x = max(tmp$lfc)-.5, y = 1, label = nup, col = status),
         size = 2,
         show.legend = F
       ) +
       geom_label(
         data    = subset(tmp, status=="Down-regulated"),
-        mapping = aes(x = min(tmp$lfc)+1.5, y = 1, label = ndw, col = status),
+        mapping = aes(x = min(tmp$lfc)+.5, y = 1, label = ndw, col = status),
         size = 2,
         show.legend = F
       ) +

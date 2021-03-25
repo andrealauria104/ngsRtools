@@ -110,6 +110,115 @@ get_heatmap3 <- function(m
   if(retHm) return(hmOut)
 }
 
+get_heatmap4 <- function(m
+                         , annotDF  = NULL
+                         , annotCol = NULL
+                         , fig_out  = NULL
+                         , retHm    = F
+                         , bm = T
+                         , myPalette = NULL
+                         , myZscale = NULL
+                         , myLegend = "CPM"
+                         , scale = T
+                         , text_size = 8
+                         , use_raster = F
+                         , ...){
+  
+  base_mean <- rowMeans(m)
+  if(scale) {
+    m_scaled <- t(apply(m, 1, scale))
+    colnames(m_scaled) <- colnames(m)
+  } else {
+    m_scaled <- m
+  }
+  
+  bPalette <- colorRampPalette(RColorBrewer::brewer.pal(9, "Reds"))
+  
+  if(is.null(myPalette)) {
+    myPalette <- c("blue","black","red")
+  }
+  
+  if(is.null(myZscale)) {
+    myZscale <- c(-2, 0, 2)
+  }
+  ramp <- circlize::colorRamp2(myZscale, myPalette)
+  
+  if(is.null(myLegend)) myLegend <- gsub("_"," ",assay.type)
+  
+  if(scale) {
+    myLegend_title <- paste0("Z-score (",myLegend,")")
+  } else {
+    myLegend_title <- myLegend
+  }
+  if (!is.null(annotDF)) {
+    if (!is.null(annotCol)) {
+      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
+                                                     col = annotCol, 
+                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
+                                                                                    labels_gp = gpar(fontsize=text_size)))
+    } else {
+      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
+                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
+                                                                                    labels_gp = gpar(fontsize=text_size)))
+    }
+  } else {
+    ha_column <- NULL
+  }
+  hm <- ComplexHeatmap::Heatmap(m_scaled
+                                , col = ramp
+                                , heatmap_legend_param = list(title = myLegend_title,
+                                                              title_gp = gpar(fontsize=text_size),
+                                                              title_position = "topcenter",
+                                                              legend_width  = unit(3, "cm"),
+                                                              legend_height = unit(0.5, "mm"),
+                                                              values_gp     = gpar(fontsize=text_size),
+                                                              labels_gp     = gpar(fontsize=text_size),
+                                                              legend_direction = "horizontal"
+                                )
+                                , top_annotation = ha_column
+                                , use_raster = use_raster
+                                , raster_device = "tiff"
+                                , raster_quality = 10
+                                , row_names_gp = gpar(fontsize=text_size)
+                                , column_names_gp = gpar(fontsize=text_size)
+                                , column_title_gp = gpar(fontsize=10, fontface="bold")
+                                , ...)
+  
+  if(bm) {
+    bmscale <- summary(base_mean)
+    bmramp <- circlize::colorRamp2(c(bmscale[1],bmscale[3],bmscale[5]), bPalette(3))
+    bmh <- ComplexHeatmap::Heatmap(base_mean 
+                                   , name = "Average Expression"
+                                   , column_names_gp = gpar(fontsize=text_size)
+                                   , show_row_names = FALSE
+                                   , width = unit(3, "mm") 
+                                   , col = bmramp
+                                   , heatmap_legend_param = list(title = paste0("Average ",myLegend)
+                                                                 ,title_gp = gpar(fontsize=text_size),
+                                                                 title_position = "topcenter",
+                                                                 legend_width  = unit(3, "cm"),
+                                                                 legend_height = unit(0.5, "mm"),
+                                                                 values_gp     = gpar(fontsize=text_size),
+                                                                 labels_gp     = gpar(fontsize=text_size),
+                                                                 # legend_direction = "vertical"
+                                                                 legend_direction = "horizontal"))
+    
+    hmOut <- hm + bmh
+  } else {
+    hmOut <- hm 
+  }
+  
+  if(!is.null(fig_out)){
+    pdf(file = fig_out, useDingbats = F, h=8, w=3, paper = "a4")
+    ComplexHeatmap::draw(hmOut, heatmap_legend_side = "right")
+    dev.off()
+  } else{
+    ComplexHeatmap::draw(hmOut, heatmap_legend_side = "right")
+  }
+  
+  if(retHm) return(hmOut)
+}
+
 get_clusters <- function(m, hm){
   # Retrieve clusters from K-means
   clusters <- lapply(ComplexHeatmap::row_order(hm), 
