@@ -229,3 +229,16 @@ calc_binwidth <- function(x, rule = 'Freedman-Diaconis')
   
   return(rules[[rule]](x))
 }
+
+# Draw tables ----
+draw_table <- function(table_df) 
+{
+  g <- tableGrob(table_df, theme=ttheme_default(base_size=8))
+  g <- gtable_add_grob(g,
+                       grobs = rectGrob(gp = gpar(fill = NA, lwd = 2)),
+                       t = 2, b = nrow(g), l = 1, r = ncol(g))
+  g <- gtable_add_grob(g,
+                       grobs = rectGrob(gp = gpar(fill = NA, lwd = 2)),
+                       t = 1, l = 1, r = ncol(g))
+  grid.draw(g)
+}

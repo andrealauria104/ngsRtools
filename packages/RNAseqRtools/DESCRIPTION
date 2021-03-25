@@ -23,6 +23,8 @@ Imports:
     dynamicTreeCut,
     gProfileR,
     clusterProfiler,
+    fgsea,
+    msigdbr,
     org.Mm.eg.db,
     org.Hs.eg.db
 License: MIT + file LICENSE
