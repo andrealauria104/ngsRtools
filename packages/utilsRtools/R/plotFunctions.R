@@ -118,6 +118,8 @@ pie_chart <- function(data, main, value = NULL, labels = NULL, condition = NULL,
 ## Venn diagram ----
 plot_venn_diagram <- function(vd_list
                               , pal    = NULL
+                              , col    = "white"
+                              , lty    = 'blank'
                               , outfig = NULL
                               , plot.h = 3
                               , plot.w = 3
@@ -141,11 +143,11 @@ plot_venn_diagram <- function(vd_list
     , margin = 0.1
     , fill = pal
     , alpha = 0.5
-    , col = rep('white',nc)
+    , col = rep(col,nc)
     , filename = NULL
     # , lwd = 0.5
     , lwd = 2
-    , lty = 'blank'
+    , lty = lty
     
     # numbers
     , fontfamily = "sans"

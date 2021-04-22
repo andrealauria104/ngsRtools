@@ -181,7 +181,7 @@ get_heatmap4 <- function(m
                                 , raster_quality = 10
                                 , row_names_gp = gpar(fontsize=text_size)
                                 , column_names_gp = gpar(fontsize=text_size)
-                                , column_title_gp = gpar(fontsize=10, fontface="bold")
+                                , column_title_gp = gpar(fontsize=text_size, fontface="plain")
                                 , ...)
   
   if(bm) {
