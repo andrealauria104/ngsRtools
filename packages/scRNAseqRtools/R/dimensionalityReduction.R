@@ -98,7 +98,8 @@ prepare_tsneplot_genes <- function(sce, genes
                                    , assay.var = "normcounts")
 {
   if(!cumulative_expression || length(genes)==1) {
-    m_genes <- t(apply(assay(sce, assay.var)[genes,, drop=F],1, scale))
+    idx <- intersect(genes, rownames(sce))
+    m_genes <- t(apply(assay(sce, assay.var)[idx,, drop=F],1, scale))
     colnames(m_genes) <- colnames(sce)
     tsneplot_genes <- reshape2::melt(m_genes
                                      , varnames = c("name","cell")
@@ -196,7 +197,7 @@ plotsceReducedDim <- function(sce, dimred
       dimred_toplot$marker <- marker$name[idx]
       dimred_toplot$expression <- marker$expression[idx]
     }
-    p0 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col="expression")) +
+    p0 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col="expression",shape=shape_by)) +
       geom_point(size=point_size) + facet_wrap(~marker, ncol = facet_ncol) +
       scale_colour_gradient2(low="#2166AC", mid="#F7F7F7", high="#B2182B"
                              , midpoint = 0
