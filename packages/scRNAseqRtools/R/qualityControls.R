@@ -134,7 +134,7 @@ read_stats <- function(statdir
     } else if(dir.exists(statdir)) {
       stats_file <- list.files(statdir, pattern = 'star.txt$', full.names = T)
       mstats <- read.delim(stats_file, stringsAsFactors = F)
-      mstats$Sample <- gsub("(_S\\d+).STAR$","",mstats$Sample)
+      mstats$Sample <- gsub("(_S\\d+)?.STAR$","",mstats$Sample)
       mstats <- mstats[,c("Sample","uniquely_mapped_percent"
                           ,"multimapped_percent","uniquely_mapped"
                           ,"multimapped","total_reads")]
