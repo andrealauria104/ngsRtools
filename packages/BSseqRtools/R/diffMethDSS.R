@@ -1,8 +1,11 @@
 # Load data ====
 prepareDSS <- function(path_files
                        , pipeline = "bismark"
+                       , bismark_file_pattern = ".trimmed_bismark_.*.CpG_report.merged_CpG_evidence.cov.gz$"
+                       , bsmap_file_pattern = "_CG.txt.gz$"
+                       , samples_file_pattern = NULL
                        , sample_names = NULL
-                       , min.cov=5) 
+                       , min.cov = 5) 
 {
   # Internal data import functions
   read_func <- function(x, pipeline) {
@@ -35,16 +38,20 @@ prepareDSS <- function(path_files
   
   if(dir.exists(path_files)) {
     if(pipeline=="bismark") {
-      file_pattern <- ".CpG_report.merged_CpG_evidence.cov.gz$"
+      file_pattern <- bismark_file_pattern
     } else if(pipeline=="bsmap"){
-      file_pattern <- ".txt$"
+      file_pattern <- bsmap_file_pattern
     }
     file_list <- list.files(path_files, pattern = file_pattern, full.names = T)
+    if(!is.null(samples_file_pattern)) 
+    {
+      file_list <- grep(paste0(samples_file_pattern,collapse="|"),file_list,value=T)
+    }
   } else {
     file_list <- path_files	
   }
   
-  if(is.null(sample_names)) sample_names <- gsub("\\..*$","",basename(file_list))
+  if(is.null(sample_names)) sample_names <- gsub(paste0(bismark_file_pattern,"|",bsmap_file_pattern),"",basename(file_list))
   # Read data 
   methylc_data <- lapply(file_list, function(x) {
     message(" -- reading data from: ",x)
@@ -92,18 +99,14 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
   message("\n[+] callDML, parameters:")
   message(" -- dml.delta = ",dml.delta)
   message(" -- dml.p.threshold = ", dml.p.threshold)
-  message(" -- dmr.delta = ", dmr.delta)
-  message(" -- dmr.p.threshold  = ", dmr.p.threshold)
-  message(" -- dmr.minlen = ", dmr.minlen)
-  message(" -- dmr.minCG = ", dmr.minCG)
-  message(" -- dmr.dis.merge = ", dmr.dis.merge)
-  message(" -- dmr.pct.sig = ", dmr.pct.sig)
   
   dmls <- DSS::callDML(dmlTest
                        , delta=dml.delta
                        , p.threshold=dml.p.threshold)
   
   message("\n[+] callDMR, parameters:")
+  message(" -- dmr.delta = ", dmr.delta)
+  message(" -- dmr.p.threshold  = ", dmr.p.threshold)
   message(" -- dmr.minlen = ", dmr.minlen)
   message(" -- dmr.minCG = ", dmr.minCG)
   message(" -- dmr.dis.merge = ", dmr.dis.merge)
@@ -125,7 +128,9 @@ runTwoGroupDSS <- function(BSobj, group1, group2, smoothing
     message("\n[+] writing DML result to file: ", outfile)
     write.table(dmls, file=outfile, row.names=F, col.names=T, sep = "\t", quote=F)
     
-    output_suffix <- paste0("delta_",dmr.delta,"_p_",dmr.p.threshold)
+    output_suffix <- paste0("delta_", dmr.delta, "_p_", dmr.p.threshold
+                    ,".",dmr.minlen,"_",dmr.minCG
+                    ,"_",dmr.dis.merge,"_",dmr.pct.sig)
     if(!is.null(analysis)) output_suffix <- paste0(analysis,"_",output_suffix)
     outfile <- paste0(outdir,"/dssDMR_",output_suffix,".txt")
     message("[+] writing DMR result to file: ", outfile)
