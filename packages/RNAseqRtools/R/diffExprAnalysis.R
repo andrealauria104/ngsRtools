@@ -907,7 +907,9 @@ plotExpression <- function(y, gene, experimental_info
                            , expression.unit = "CPM"
                            , group.by=NULL
                            , plot.type="bar"
-                           , pal=NULL) 
+                           , pal=NULL
+                           , ord_idx=NULL
+                           , x_text_size=6) 
 {
   if(length(gene)>1) {
     toplot <- reshape2::melt(y[[expression.unit]][gene,], varnames=c("gene","sample"))
@@ -934,11 +936,19 @@ plotExpression <- function(y, gene, experimental_info
         scale_fill_manual(values = pal) + ylab(paste0("average ",toupper(expression.unit)))
     }
   } else {
+    if(is.null(ord_idx)) {
+    	if("group"%in%colnames(y$samples)) {
+     	  ord_idx <- rownames(y$samples[order(y$samples$group),])
+      } else {
+	      ord_idx <- colnames(y)
+      }
+    }
+    toplot$sample <- factor(toplot$sample, levels=ord_idx) 
     if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,"sample"])))
     if(plot.type=="bar") {
-      p <- ggplot(toplot, aes(x=sample, y=value, fill=sample))+ geom_col(lwd = 0.25,width=0.9) +
+      p <- ggplot(toplot, aes(x=sample, y=value, fill=sample))+ geom_col(lwd = 0.25,width=0.9,show.legend = F) +
         facet_wrap(~gene, scales = "free_y", ncol = 4) + theme_bw() + my_theme_2 +
-        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), axis.text.x = element_blank(), strip.text = element_text(face = "plain", size = 8)) +
+        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), axis.text.x = element_text(size=x_text_size, angle=45, hjust=1,vjust=1), strip.text = element_text(face = "plain", size = 8)) +
         scale_fill_manual(values = pal) + ylab(toupper(expression.unit))
     }
   }
