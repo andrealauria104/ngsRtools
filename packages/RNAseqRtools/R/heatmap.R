@@ -113,6 +113,10 @@ get_heatmap3 <- function(m
 get_heatmap4 <- function(m
                          , annotDF  = NULL
                          , annotCol = NULL
+                         , show_annotation_name = T
+                         , annotation_width_heigth = 2
+                         , annotation_nrow = 1
+                         , annotation_ncol = NULL
                          , fig_out  = NULL
                          , retHm    = F
                          , bm = T
@@ -122,6 +126,7 @@ get_heatmap4 <- function(m
                          , scale = T
                          , text_size = 8
                          , use_raster = F
+                         , raster_quality = 10
                          , ...){
   
   base_mean <- rowMeans(m)
@@ -152,14 +157,24 @@ get_heatmap4 <- function(m
   }
   if (!is.null(annotDF)) {
     if (!is.null(annotCol)) {
-      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
-                                                     col = annotCol, 
-                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
-                                                                                    labels_gp = gpar(fontsize=text_size)))
+      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF 
+                                                     , col = annotCol 
+                                                     , annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
+                                                                                      labels_gp = gpar(fontsize=text_size))
+                                                     , height = unit(annotation_width_heigth, "mm")
+                                                     , show_annotation_name = show_annotation_name
+                                                     , which = "column"
+                                                     , show_legend = T
+                                                     , annotation_name_gp = gpar(fontsize=text_size))
     } else {
-      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF, 
-                                                     annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
-                                                                                    labels_gp = gpar(fontsize=text_size)))
+      ha_column <- ComplexHeatmap::HeatmapAnnotation(df  = annotDF 
+                                                     , annotation_legend_param = list(title_gp  = gpar(fontsize=text_size),
+                                                                                      labels_gp = gpar(fontsize=text_size))
+                                                     , height = unit(annotation_width_heigth, "mm")
+                                                     , show_annotation_name = show_annotation_name
+                                                     , which = "column"
+                                                     , show_legend = T
+                                                     , annotation_name_gp = gpar(fontsize=text_size))
     }
   } else {
     ha_column <- NULL
@@ -178,7 +193,7 @@ get_heatmap4 <- function(m
                                 , top_annotation = ha_column
                                 , use_raster = use_raster
                                 , raster_device = "tiff"
-                                , raster_quality = 10
+                                , raster_quality = raster_quality
                                 , row_names_gp = gpar(fontsize=text_size)
                                 , column_names_gp = gpar(fontsize=text_size)
                                 , column_title_gp = gpar(fontsize=text_size, fontface="plain")
