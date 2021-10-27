@@ -1,5 +1,5 @@
 # Ranking metric ====
-getRankingMetric <- function(x, dea.tool="edgeR", method = "logFC_PValue")
+getRankingMetric <- function(x, dea.tool="edgeR", method = "logFC_PValue",decreasing=F)
 {
   if(dea.tool=="edgeR") {
   	if(method=="logFC_PValue") {
@@ -24,11 +24,13 @@ getRankingMetric <- function(x, dea.tool="edgeR", method = "logFC_PValue")
   	} else {
   		message("[!] Invalid method for edgeR; provide one of: logFC_PValue, logFC, PValue, FDR, lrt, qlf")
   	}
+  } else {
+    message("[!] dea.tool: ",dea.tool," is not supported.")
   }
 
   if(exists("rank",inherits = F)) {
     names(rank) <- x[,1]
-    rank <- rank[order(rank,decreasing = F)]
+    rank <- rank[order(rank,decreasing = decreasing)]
     return(rank)
   }
   
