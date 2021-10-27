@@ -154,7 +154,7 @@ get_heatmap_bs <- function(m
                                                                     legend_direction = "horizontal"))
     }
   } else {
-    ha_column <- new("HeatmapAnnotation")
+    ha_column <- NULL
   }
   
   hm <- ComplexHeatmap::Heatmap(m, col = ramp,
@@ -171,10 +171,10 @@ get_heatmap_bs <- function(m
                                             values_gp     = gpar(fontsize=8),
                                             legend_direction = "horizontal")
                 , top_annotation = ha_column
-                , top_annotation_height = unit(4, "mm")
+                # , top_annotation_height = unit(4, "mm")
                 , width = unit(3,'cm')
                 # , width = unit(2,'cm')
-                , rect_gp = gpar(col = 'black', lwd=0.25 )
+                # , rect_gp = gpar(col = 'black', lwd=0.25 )
                 , ...)
   
   hmOut <- hm
