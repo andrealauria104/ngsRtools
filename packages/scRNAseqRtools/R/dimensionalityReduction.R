@@ -95,12 +95,17 @@ getTSNE <- function(x
 
 prepare_tsneplot_genes <- function(sce, genes
                                    , cumulative_expression = F
-                                   , assay.var = "normcounts")
+                                   , assay.var = "normcounts"
+                                   , scale = T)
 {
   if(!cumulative_expression || length(genes)==1) {
     idx <- intersect(genes, rownames(sce))
-    m_genes <- t(apply(assay(sce, assay.var)[idx,, drop=F],1, scale))
-    colnames(m_genes) <- colnames(sce)
+    if(scale) {
+      m_genes <- t(scale(t(assay(sce, assay.var)[idx,, drop=F])))
+    } else {
+      m_genes <- assay(sce, assay.var)[idx,, drop=F]
+    }
+    
     tsneplot_genes <- reshape2::melt(m_genes
                                      , varnames = c("name","cell")
                                      , value.name = "expression")
@@ -110,9 +115,13 @@ prepare_tsneplot_genes <- function(sce, genes
       colSums(assay(sce, assay.var)[idx,])
     })
     geneset <- do.call(rbind, geneset)
-    geneset
-    m_geneset <- t(apply(geneset, 1, scale))
-    colnames(m_geneset) <- colnames(geneset)
+    
+    if(scale) {
+      m_geneset <- t(scale(t(geneset)))
+    } else {
+      m_geneset <- geneset
+    }
+    
     tsneplot_genes <- reshape2::melt(m_geneset
                                      , varnames = c("name","cell")
                                      , value.name = "expression")
