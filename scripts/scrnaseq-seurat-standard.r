@@ -28,6 +28,14 @@
 suppressWarnings(suppressMessages(library(Seurat)))
 suppressWarnings(suppressMessages(library(scRNAseqRtools)))
 
+# configuration ---
+CORES = 12
+# Set OpenMP threads
+set_openmp_threads = TRUE
+if(set_openmp_threads) {
+  Sys.setenv("OMP_NUM_THREADS" = CORES)
+}
+
 # paths ---
 path_seurat_obj <- ASSIGN_PATH_SEURAT_OBJ
 path_results    <- ASSIGN_PATH_RESULTS
@@ -40,7 +48,7 @@ metadata_features <- ASSIGN_METADATA_FEATURES # used for grouping in plots, char
 # QC
 nFeature_RNA.th = 2000
 nCount_RNA.th = 50000
-percent.mt.th = 25
+percent.mt.th = 100
 
 # Feature selection and scaling
 variable_features_nfeatures <- 2000
@@ -280,7 +288,7 @@ for(reduction in reductions) {
 }
 
 # markers
-if(markers_do_violin) {
+if(markers_do_vln) {
   
   top_n_genes <- lapply(split(markers, markers$cluster), function(x) head(x, n = markers_vln_n_top))
   top_n_genes <- do.call(rbind.data.frame, top_n_genes)
@@ -308,10 +316,10 @@ if(markers_do_violin) {
  
 }
 if(markers_do_heatmap) {
-  top_n_genes <- lapply(split(markers, markers$cluster), function(x) head(x, n = markers_n_top))
+  top_n_genes <- lapply(split(markers, markers$cluster), function(x) head(x, n = markers_heatmap_n_top))
   top_n_genes <- do.call(rbind.data.frame, top_n_genes)
   
-  outfile <- paste0(path_results, "/seurat_clusters_markers.heatmap.top_",n_top,".pdf")
+  outfile <- paste0(path_results, "/seurat_clusters_markers.heatmap.top_",markers_heatmap_n_top,".pdf")
   pdf(file = outfile, paper = "a4", w = unit(8, 'cm'), h = unit(10, 'cm'), useDingbats = F)
   DoHeatmap(seurat_obj, features = top_n_genes$gene) + NoLegend()
   dev.off()
