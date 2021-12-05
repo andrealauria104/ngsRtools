@@ -467,7 +467,7 @@ plot_overall_alignment_stats <- function(mapping_stats, size_cutoff)
   
   plot_vars <- c('Unmapped','Multimapped','Uniquely_mapped')
   idx <- mapping_stats[with(mapping_stats, order(Total_reads, decreasing = F)),'Sample']
-  cidx <- grep(paste0(c("Sample",plot_vars),collapse = "|"),colnames(mapping_stats), value = T)
+  cidx <- grep(paste0(c("^Sample$",plot_vars),collapse = "|"),colnames(mapping_stats), value = T)
   cidx <- cidx[grep("rate",cidx, invert = T)]
   
   toplot <- reshape2::melt(mapping_stats[,cidx], id.var = 'Sample')
