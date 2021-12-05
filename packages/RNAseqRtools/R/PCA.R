@@ -125,7 +125,7 @@ plotPCA <- function(x, experimental_info = NULL
         theme_bw() + my_theme_2 + scale_x_continuous(breaks = spdata$Var2) + 
         geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
         xlab("Principal Component") + ylab("Explained Variance") + ggtitle("PCA - Scree Plot") + 
-        theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank()) +
+        theme(panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank()) +
         scale_y_continuous(breaks = seq(0,1,0.1),labels = scales::percent, limits = c(0,1)) + scale_color_manual(values=c("black","grey"))
     } else if(scree_plot_type=='standard_deviation') {
       spdata      <- reshape2::melt(pca_data$pca_summary[1,])
@@ -137,7 +137,7 @@ plotPCA <- function(x, experimental_info = NULL
         theme_bw() + my_theme_2 + scale_x_continuous(breaks = spdata$Var2) + 
         geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
         xlab("Principal Component") + ylab("Standard Deviation") + ggtitle("PCA - Scree Plot") + 
-        theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank())
+        theme(panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank())
       
     }
     
@@ -169,7 +169,7 @@ assignLoadings <- function(pca_data
                          , stringsAsFactors = F)
   
   if(cor.test.loadings) {
-    message(" -- Flter genes/loadings by significant correlation")
+    message(" -- Filter genes/loadings by significant correlation")
     message(" -- P-value threshold: ", cor.pv.th)
     pvs <- vector()
     if(any(grepl("pca_cor.pv",names(pca_data)))) {
@@ -197,7 +197,8 @@ assignLoadings <- function(pca_data
   return(assigned)
 }
 
-plotLoadings <- function(pca_data, components
+plotLoadings <- function(pca_data
+                         , components = c("PC1","PC2")
                          , point_size = 0.2
                          , assigned = NULL
                          , genes = NULL
@@ -235,7 +236,11 @@ plotLoadings <- function(pca_data, components
     geom_hline(yintercept = 0, lwd=0.2, linetype="dashed", col = "black") +
     geom_vline(xintercept = 0, lwd=0.2, linetype="dashed", col = "black") +
     ggtitle("PCA Loadings Plot") + scale_color_manual(values = c("#404040","#CC0000","orange")) +
-    theme_bw() + my_theme + theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank()) 
+    theme_bw() + my_theme + 
+    theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold")
+          , legend.title = element_blank()
+          , panel.grid.major = element_blank()
+          , panel.grid.minor = element_blank()) 
   
   if(!is.null(genes)) {
     if(is.null(genes_info)) genes_info <- rep("Gene loading vector",length(genes))
@@ -252,7 +257,11 @@ plotLoadings <- function(pca_data, components
       geom_hline(yintercept = 0, lwd=0.2, linetype="dashed", col = "black") +
       geom_vline(xintercept = 0, lwd=0.2, linetype="dashed", col = "black") +
       ggtitle("PCA Loadings Plot") + scale_color_manual(values = c("#CC0000","orange")) +
-      theme_bw() + my_theme + theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank()) 
+      theme_bw() + my_theme + 
+      theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold")
+            , legend.title = element_blank()
+            , panel.grid.major = element_blank()
+            , panel.grid.minor = element_blank()) 
       coord_equal(ratio = 1)
     plots <- list("all"=p,"genes"=p.genes)
     return(plots)  
