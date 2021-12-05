@@ -154,7 +154,8 @@ plotsceReducedDim <- function(sce, dimred
                               , marker=NULL
                               , facet_ncol = 3 
                               , scale_col_limits = c(-1.5,1.5)
-                              , legend_position = "right") 
+                              , legend_position = "right"
+                              , assay.type = "logcounts") 
 {
   dimred_toplot <- as.data.frame(SingleCellExperiment::reducedDim(sce, type=dimred)[,1:num_dim])
   if(dimred=="TSNE") colnames(dimred_toplot) <- gsub("^V","tSNE",colnames(dimred_toplot))
@@ -173,49 +174,73 @@ plotsceReducedDim <- function(sce, dimred
   dimred_toplot <- merge(dimred_toplot, as.data.frame(colData(sce)), by="Sample")
   rownames(dimred_toplot) <- dimred_toplot$Sample
   if(is.null(pal)) {
-    if(!is.null(col_by)) {
+    if(!is.null(col_by) & !is.numeric(dimred_toplot[,col_by])) {
       pal <- ggsci::pal_d3()(length(unique(dimred_toplot[,col_by])))
-    } else {
+    } else if(!is.null(col_by) & is.numeric(dimred_toplot[,col_by])) {
+      pal <- rev(RColorBrewer::brewer.pal(9,"RdBu"))
+    }
+    else {
       pal <- "black"
     }
   }
   
-  
   if(is.null(marker)) {
-    p0 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col=col_by, shape=shape_by)) +
-      geom_point(size=point_size) + scale_color_manual(values=pal)+
-      xlab(x_lab) + ylab(y_lab) + guides(col = guide_legend(ncol=1)) + 
-      theme_bw() + my_theme_2 +
-      theme(legend.position = legend_position, panel.grid.major = element_blank(),aspect.ratio = 1)
-    
-  } else {
-    mnames <- unique(marker$name)
-    if(length(mnames)>1) {
-      tmp <- list()
-      for(i in mnames) {
-        tmp[[i]] <- dimred_toplot
-        tmp_mark <- subset(marker, name==i)
-        idx <- match(rownames(tmp[[i]]), tmp_mark$cell)
-        tmp[[i]]$marker <- i
-        tmp[[i]]$expression <- tmp_mark$expression[idx]
-      }
-      dimred_toplot <- do.call(rbind, tmp)
-      rm(tmp_mark)
+    p00 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col=col_by, shape=shape_by)) +
+      geom_point(size=point_size) 
+    if(is.numeric(dimred_toplot[,col_by])) {
+      p0 <- p00 + scale_colour_gradientn(colours = pal) +
+        xlab(x_lab) + ylab(y_lab) + guides(col = guide_colourbar(barwidth = 0.5)) +
+        theme_bw() + my_theme_2 +
+        theme(legend.position = legend_position, panel.grid.major = element_blank(), aspect.ratio = 1)
     } else {
-      idx <- match(rownames(dimred_toplot), marker$cell)
-      dimred_toplot$marker <- marker$name[idx]
-      dimred_toplot$expression <- marker$expression[idx]
+      p0 <- p00 + scale_color_manual(values=pal)+
+        xlab(x_lab) + ylab(y_lab) + guides(col = guide_legend(ncol=1)) + 
+        theme_bw() + my_theme_2 +
+        theme(legend.position = legend_position, panel.grid.major = element_blank(), aspect.ratio = 1)
     }
-    p0 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col="expression",shape=shape_by)) +
-      geom_point(size=point_size) + facet_wrap(~marker, ncol = facet_ncol) +
-      scale_colour_gradient2(low="#2166AC", mid="#F7F7F7", high="#B2182B"
-                             , midpoint = 0
-                             , breaks = seq(-2,2,1)
-                             , limits = scale_col_limits
-                             , oob=squish) +
-      guides(col = guide_colourbar(barwidth = 0.8)) +
-      xlab(x_lab) + ylab(y_lab) + theme_bw() + my_theme_2 + 
-      theme(legend.position = legend_position, panel.grid.major = element_blank(),aspect.ratio = 1)
-  }
-  return(p0)
+    return(p0)
+  } else if(is.data.frame(marker) || is.character(marker)) {
+   if(is.data.frame(marker)) {
+     mnames <- unique(marker$name)
+     if(length(mnames)>1) {
+       tmp <- list()
+       for(i in mnames) {
+         tmp[[i]] <- dimred_toplot
+         tmp_mark <- subset(marker, name==i)
+         idx <- match(rownames(tmp[[i]]), tmp_mark$cell)
+         tmp[[i]]$marker <- i
+         tmp[[i]]$expression <- tmp_mark$expression[idx]
+       }
+       dimred_toplot <- do.call(rbind, tmp)
+       rm(tmp_mark)
+     } else {
+       idx <- match(rownames(dimred_toplot), marker$cell)
+       dimred_toplot$marker <- marker$name[idx]
+       dimred_toplot$expression <- marker$expression[idx]
+     }
+     p0 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col="expression",shape=shape_by)) +
+       geom_point(size=point_size) + facet_wrap(~marker, ncol = facet_ncol) +
+       scale_colour_gradient2(low="#2166AC", mid="#F7F7F7", high="#B2182B"
+                              , midpoint = 0
+                              , breaks = seq(-2,2,1)
+                              , limits = scale_col_limits
+                              , oob=squish) +
+       guides(col = guide_colourbar(barwidth = 0.8)) +
+       xlab(x_lab) + ylab(y_lab) + theme_bw() + my_theme_2 + 
+       theme(legend.position = legend_position, panel.grid.major = element_blank(),aspect.ratio = 1)
+   } else if(is.character(marker) & length(marker)==1) {
+     
+     marker_idx <- grep(paste0("^",marker,"$"), rownames(sce), value=T)
+     dimred_toplot[[marker_idx]] <- assay(sce, assay.type)[marker_idx,dimred_toplot$Sample]  
+     
+     p0 <- ggplot(dimred_toplot, aes_string(x=x_var, y=y_var, col=marker_idx,shape=shape_by)) +
+       geom_point(size=point_size) + scale_colour_gradientn(colours = pal) +
+       xlab(x_lab) + ylab(y_lab) + guides(col = guide_colourbar(barwidth = 0.5)) +
+       theme_bw() + my_theme_2 +
+       theme(legend.position = legend_position, panel.grid.major = element_blank(), aspect.ratio = 1)
+   }
+    return(p0)
+    } else {
+     message("[!] Invalid marker format (data.frame, character vector)")
+    }
 }
