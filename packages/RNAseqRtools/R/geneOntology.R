@@ -8,13 +8,12 @@ getGO <- function(gene_list
                   , process = T
                   , pvth = 0.05
                   , ncut = NULL
+                  , src_filters = c("GO:BP","GO:MF","GO:CC","KEGG",
+                                    "REAC","TF","MI","CORUM","OMIM", 
+                                    "HPA","HP")
                   , ...)
 {
  
-  src_filters = c("GO:BP","GO:MF","GO:CC","KEGG",
-                 "REAC","TF","MI","CORUM","OMIM", 
-                 "HPA","HP")
-  
   profileres <- lapply(src_filters, function(src)
     {
       gProfileR::gprofiler( gene_list,
