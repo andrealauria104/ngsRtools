@@ -69,7 +69,7 @@ plot_gene_expression <- function(y, genes
         if (length(summarize_by) == 1) {
           m$sample <- m[,summarize_by]
         } else {
-          m$sample <- apply(m$sample[, summarize_by], 1, paste0, collapse = "_")
+          m$sample <- apply(m[, summarize_by], 1, paste0, collapse = "_")
         }
         if(!is.null(precedence)) m$sample <- factor(m$sample, levels = precedence)
         if(plot.type=="bars") {
@@ -96,11 +96,11 @@ plot_gene_expression <- function(y, genes
             if(lines_error_bar) pm <- pm + geom_errorbar(aes(ymax=av+se, ymin=av-se, group = summarize_by[2]), size=0.2, width=0.3,linetype="dashed", lwd = 0.25)
           } else {
             if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(m[,summarize_by[2]])))
-            pm <- ggplot(m, aes_string(x=summarize_by[1], y=av, group = summarize_by[2], col = summarize_by[2])) 
+            pm <- ggplot(m, aes_string(x=summarize_by[1], y="av", group = summarize_by[2], col = summarize_by[2])) 
             if(lines_error_bar) pm <- pm + geom_errorbar(aes(ymax=av+se, ymin=av-se, group = summarize_by[2]), size=0.2, width=0.3,linetype="dashed", lwd = 0.25)
           }
           pm <- pm + geom_line(lwd=0.25) + geom_point() + 
-            facet_wrap(as.formula(facet_formula), scales = "free_y", ncol = 6) + theme_bw() + my_theme_2 +
+            facet_wrap(as.formula(facet_formula), scales = "free_y", ncol = facet_ncol) + theme_bw() + my_theme_2 +
             scale_color_manual(values = pal) + ylab(paste0("average ",expr.unit.nm))
         }} else {
           if(plot.type=="bars") {
