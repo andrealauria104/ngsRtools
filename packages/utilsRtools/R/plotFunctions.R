@@ -202,3 +202,19 @@ get_legend <- function(a_gplot){
   legend <- tmp$grobs[[leg]]
   return(legend)
 }
+
+## Palettes ----
+get_palette_features <- function(metadata_features, pals = NULL)
+{
+  if(is.null(pals)) {
+    # set defaults from ggsci
+    pals <- ls('package:ggsci', pattern = 'pal')[1:length(metadata_features)] 
+  }
+  palette_features <- lapply(pals, function(p) {
+    # fill missing items fromm RColorBrewer 
+    rcb_pal <- sample(rownames(subset(RColorBrewer::brewer.pal.info,category=="div")),1)
+    c(get(p)()(9),RColorBrewer::brewer.pal(9,rcb_pal))
+  })
+  names(palette_features) <- metadata_features
+  return(palette_features)
+}
