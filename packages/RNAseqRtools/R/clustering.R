@@ -63,6 +63,11 @@ setKMClusters <- function(m, method="silhouette", ...)
   }
 }
 
+getKMeans <- function(x, centers, scaledata = T, ...) {
+  if(scaledata) x <- t(scale(t(x)))
+  stats::kmeans(x = x, centers = centers, ...)
+}
+
 # partitioning aroung medoids (PAM) ---
 setPAMCnumber <- function(m, metric = "euclidean", scaledata = T, nc = 12, ret = T)
 {
