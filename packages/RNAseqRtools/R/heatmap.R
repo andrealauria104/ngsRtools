@@ -272,6 +272,94 @@ plot_cluster_expression <- function(m, cl, pal)
   
 }
 
+plot_cluster_expression2 <- function(y, cl
+                                     , group_by = NULL
+                                     , scale = T
+                                     , expression.unit = "logCPM"
+                                     , experimental_info = NULL
+                                     , pal = NULL
+                                     , plot.type = "boxplot"
+                                     , ribbon_fill_color = "#3399FF"
+                                     , facet_ncol = 3) 
+{
+  if(class(y)!="DGEList" && is.null(experimental_info)) {
+    message("[!] Incorrect gene expression data, must be DGEList or matrix/data frame with defined experimental_info")
+  } else {
+    if(is.list(cl) || is.numeric(cl)) {
+      if(is.numeric(cl) && !is.null(names(cl))) {
+        cl_nm <- paste0("cluster_", unique(cl))
+        cl    <- lapply(unique(cl), function(x) names(cl)[which(cl==x)])
+        names(cl) <- cl_nm
+      }
+      
+      if(class(y)!="DGEList") {
+        # TO DO...
+      } else {
+        if(!is.null(group_by)) {
+          by_group_log <- ifelse(grepl("^log",expression.unit),TRUE,FALSE)
+          if(grepl("CPM$",expression.unit, ignore.case = T)) {
+            m <- edgeR::cpmByGroup(y=y,group=y$samples[,group_by],log=by_group_log)
+          } else if(grepl("RPKM$",expression.unit, ignore.case = T)) {
+            m <- edgeR::rpkmByGroup(y=y,group=y$samples[,group_by],log=by_group_log)
+          }
+          if(scale) {
+            m <- t(scale(t(m)))
+          }
+          m_list <- lapply(cl, function(x) m[x,])
+          toplot <- reshape2::melt(m_list)
+          colnames(toplot) <- c("gene","sample","expression","cluster")
+          
+          toplot <- merge(toplot,y$samples, by.x = "sample", by.y = group_by)
+          
+          if(plot.type=="boxplot") {
+            toplot <- plyr::ddply(toplot, .(sample,cluster), mutate, median=median(expression))
+            p <- ggplot(toplot, aes(x=sample, y=expression, fill=sample)) + 
+              geom_line(aes(x=sample,y=median, group=cluster, col=sample), size=.5) +
+              geom_point(aes(x=sample,y=median, group=cluster, col=sample),size=1) +
+              geom_boxplot(width = 0.6, outlier.shape = NA) +
+              facet_wrap(~cluster, ncol=facet_ncol) +
+              theme_bw() + my_theme +
+              scale_fill_manual(values = pal) + 
+              scale_color_manual(values = pal) + 
+              theme(panel.grid.minor = element_blank()
+                    , axis.title.x = element_blank()
+                    , axis.text.x = element_text(angle = 45, hjust = 1, vjust=1)
+                    , strip.background = element_blank())
+          } else if(plot.type=="summary_median"){
+            # TO DO...
+            toplot <- plyr::ddply(toplot, .(sample,cluster), mutate
+                                  , median=median(expression)
+                                  , q1=quantile(expression)["25%"]
+                                  , q3=quantile(expression)["75%"])
+            p <- ggplot(toplot, aes(x=sample, y=expression, fill=sample)) + 
+              geom_line(aes(x=sample,y=median, group=cluster, col=sample), size=.5) +
+              geom_point(aes(x=sample,y=median, group=cluster, col=sample),size=1) +
+              geom_ribbon(aes(ymin=q1, ymax=q3,group=cluster),fill=ribbon_fill_color, alpha=0.3) + 
+              facet_wrap(~cluster, ncol=facet_ncol) +
+              theme_bw() + my_theme +
+              scale_fill_manual(values = pal) + 
+              scale_color_manual(values = pal) + 
+              theme(panel.grid.minor = element_blank()
+                    , axis.title.x = element_blank()
+                    , axis.text.x = element_text(angle = 45, hjust = 1, vjust=1)
+                    , strip.background = element_blank())
+          }
+        } else {
+          # TO DO...
+          m_list <- lapply(cl, function(x) y[[expression.unit]][x,])
+          toplot <- reshape2::melt(m_list)
+          colnames(toplot) <- c("gene","sample","expression","cluster")
+        }
+        
+        
+      }
+      return(p)
+    } else {
+      message("[!] Incorrect cluster gene list, must be list or named character vector.")
+    }
+  }
+}
+
 plot_hm_fc <- function(res_df
                        , myPalette = NULL
                        , myFCscale = NULL
