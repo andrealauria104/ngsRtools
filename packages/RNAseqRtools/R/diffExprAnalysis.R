@@ -909,7 +909,17 @@ plotExpression <- function(y, gene, experimental_info
                            , plot.type="bar"
                            , pal=NULL
                            , ord_idx=NULL
-                           , x_text_size=6) 
+                           , x_text_size=8
+                           , show.points=T
+                           , point.size=0.8
+                           , point.width=0.1
+                           , col.width=0.8
+                           , error.type="sd" # se
+                           , show.names=F
+                           , show.legend=T
+                           , names.rot=0
+                           , gene.text.face="bold"
+                           ) 
 {
   if(length(gene)>1) {
     toplot <- reshape2::melt(y[[expression.unit]][gene,], varnames=c("gene","sample"))
@@ -922,18 +932,45 @@ plotExpression <- function(y, gene, experimental_info
     message(" -- averaging over groups: ", group.by)
     
     toplot$group <- experimental_info[,group.by]
-    toplot <- ddply(toplot, .(gene, group)
-                    , summarize
-                    , av = mean(value)
-                    , sd = sd(value)/sqrt(length(value)))
+    if(error.type=="sd") {
+      toplot <- ddply(toplot, .(gene, group)
+                      , mutate
+                      , av = mean(value)
+                      , sd = sd(value))
+  
+    } else if(error.type=="se") {
+      toplot <- ddply(toplot, .(gene, group)
+                      , mutate
+                      , av = mean(value)
+                      , sd = sd(value)/sqrt(length(value)))
+    }
     colnames(toplot)[which(colnames(toplot)=="group")] <- group.by
+    
+    if(!is.null(ord_idx)) toplot[,group.by] <- factor(toplot[,group.by], levels = ord_idx)
     if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,group.by])))
+    
     if(plot.type=="bar") {
-      p <- ggplot(toplot, aes_string(x=group.by,y="av", fill=group.by))+ geom_col(lwd = 0.25) +
+      p <- ggplot(unique(toplot[,c(group.by,"av","sd","gene")]), aes_string(x=group.by,y="av", fill=group.by))+ 
+        geom_col(lwd = 0.25, width=col.width, show.legend = show.legend) +
         geom_errorbar(aes(ymax=av+sd, ymin=av-sd), size=0.2, width=0.3,linetype="dashed", lwd = 0.25, position = position_dodge(width = 0.8)) +
         facet_wrap(~gene, scales = "free_y", ncol = 4) + theme_bw() + my_theme_2 +
-        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), axis.text.x = element_blank(), strip.text = element_text(face = "bold", size = 8)) +
+        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), strip.text = element_text(face = gene.text.face, size = 8)) +
         scale_fill_manual(values = pal) + ylab(paste0("average ",toupper(expression.unit)))
+      if(show.points) {
+       p <- p + geom_jitter(data=toplot, aes_string(x=group.by,y="value"),width = point.width,size=point.size, show.legend=F) + 
+         ylab(toupper(expression.unit))
+      }
+      if(show.names) {
+        if(names.rot==45) {
+          p <- p + theme(axis.text.x = element_text(size = x_text_size, angle=names.rot, hjust = 1, vjust = 1))
+        } else if(names.rot==90){
+          p <- p + theme(axis.text.x = element_text(size = x_text_size, angle=names.rot, hjust = 1, vjust = .5))
+        }else {
+          p <- p + theme(axis.text.x = element_text(size = x_text_size))
+        }
+      } else {
+        p <- p + theme(axis.text.x = element_blank())
+      }
     }
   } else {
     if(is.null(ord_idx)) {
