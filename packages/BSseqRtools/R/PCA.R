@@ -12,7 +12,8 @@ plotMethPCA <- function(meth
                     , max.pcs = NULL
                     , dim_1 = "PC1"
                     , dim_2 = "PC2"
-                    , default.title = "CpG Methylation PCA") {
+                    , default.title = "CpG Methylation PCA"
+                    , return_pca_obj = FALSE) {
   
   pca  <- methylKit::PCASamples(meth,
                                 screeplot = F,
@@ -86,7 +87,7 @@ plotMethPCA <- function(meth
         theme_bw() + my_theme_2 + scale_x_continuous(breaks = spdata$Var2) + 
         geom_hline(yintercept = 0.9, lwd=0.2, linetype="dashed", col = "darkred") +
         xlab("Principal Component") + ylab("Explained Variance") + ggtitle("PCA - Scree Plot") + 
-        theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid = element_blank()) +
+        theme(plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), legend.title = element_blank(), panel.grid.minor = element_blank()) +
         scale_y_continuous(breaks = seq(0,1,0.1),labels = scales::percent, limits = c(0,1)) + scale_color_manual(values=c("black","grey"))
     } else if(scree_plot_type=='standard_deviation') {
       spdata      <- reshape2::melt(pca_summary[1,])
@@ -102,8 +103,16 @@ plotMethPCA <- function(meth
       
     }
     
-    return(list("pca" = p, "screeplot" = sp))
+    if(return_pca_obj) {
+      return(list("p_pca" = p, "screeplot" = sp,"pca"=pca))
+    } else {
+      return(list("p_pca" = p, "screeplot" = sp))
+    }
   } else {
-    return(p) 
+    if(return_pca_obj) {
+      return(list("p_pca" = p, "pca"=pca))
+    } else {
+      return(p) 
+    }
   }
 }

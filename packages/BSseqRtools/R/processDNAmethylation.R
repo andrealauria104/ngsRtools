@@ -49,6 +49,24 @@ get_average_methylation <- function(mratio)
   return(mratio)
 }
 
+get_average_methylation_2 <- function(mdata_ratio, metadata, metadata_features_summarize)
+{
+  metadata_i <- metadata[,c("sample.id",metadata_features_summarize)]
+  idx <- list()
+  for(i in unique(metadata_i[,metadata_features_summarize])) {
+    idx[[i]] <- which(metadata_i[,metadata_features_summarize]==i)
+  }
+  m <- lapply(idx, function(i) {
+   if(length(i)>1) {
+     rowMeans(mdata_ratio[,i], na.rm = T)
+   } else{
+     mdata_ratio[,i]
+   }
+  })
+  m <- do.call(cbind, m)
+  return(m)
+}
+
 get_average_coverage <- function(mtr)
 {
   mtr <- getData(mtr)
@@ -61,18 +79,19 @@ get_average_coverage <- function(mtr)
   return(mtr[,c('position','average_cv')])
 }
 
-get_qmtr_ratio <- function(mtr.ratio)
+get_qmtr_ratio <- function(mtr.ratio
+                           , qn = seq(0,100,20))
 {
   apply(mtr.ratio, 2, function(x) {
     n <- list()
     nn <- vector(mode = 'character')
-    qn <- seq(0,100,20)
+    
     nstep <- length(qn)-1
     for(i in 1:nstep) {
       if(i!=nstep) {
-        n[[i]] <- sum( x>=qn[i] & x<qn[i+1] )
+        n[[i]] <- sum( x>=qn[i] & x<qn[i+1], na.rm = T )
       } else {
-        n[[i]] <- sum( x>=qn[i] & x<=qn[i+1] )
+        n[[i]] <- sum( x>=qn[i] & x<=qn[i+1], na.rm = T )
       }
       nn[i] <- paste0(qn[i],"-",qn[i+1], "%")
     }
@@ -82,6 +101,53 @@ get_qmtr_ratio <- function(mtr.ratio)
   } )
 }
 
+intersect_mtr <- function(mtr_x, mtr_y
+                          , return.obj = "GRanges"
+                          , return.merged = F)
+{
+  convert_input <- function(mtr)
+  {
+    if(grepl('methyl', class(mtr))) {
+      mtrranges <- as(mtr,"GRanges")
+    } else if(grepl('data.frame', class(mtr))) {
+      mtrranges <- GenomicRanges::makeGRangesFromDataFrame(mtr)
+    } else if(grepl('GRanges', class(mtr))) {
+      mtrranges <- mtr
+    }
+    return(mtrranges)
+  }
+  mtr_x <- convert_input(mtr_x)
+  mtr_y <- convert_input(mtr_y)
+  
+  ov <- IRanges::findOverlaps(mtr_x, mtr_y, ignore.strand=T, type = 'any')
+  x <- mtr_x[S4Vectors::queryHits(ov),]
+  y <- mtr_y[S4Vectors::subjectHits(ov),]
+  
+  if(return.merged) {
+    colnames(x@elementMetadata) <- paste0(colnames(x@elementMetadata),"_x")
+    colnames(y@elementMetadata) <- paste0(colnames(y@elementMetadata),"_y")
+    x@elementMetadata <- cbind.DataFrame(x@elementMetadata, y@elementMetadata)
+    m <- x
+    rm(x,y)
+    if(return.obj == "GRanges") {
+      return(m)
+    } else if(return.obj == "data.frame") {
+      return(as.data.frame(m))
+    } else {
+      stop(message("[!] Invalid return object (GRanges/data.frame)."))
+    }
+  } else {
+    if(return.obj == "GRanges") {
+      return(list("mtr_x"=x,"mtr_y"=y))
+    } else if(return.obj == "data.frame") {
+      return(list("mtr_x"=as.data.frame(x),"mtr_y"=as.data.frame(y)))
+    } else {
+      stop(message("[!] Invalid return object (GRanges/data.frame)."))
+    }
+  }
+}
+
+# Plotting =====
 plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
 {
   qm <- reshape2::melt(q.mtr.ratio, varnames = c('methylation','sample'))
@@ -120,6 +186,87 @@ plot_qmtr_ratio <- function(q.mtr.ratio, fann = NULL)
   }
   
   return(bars)
+}
+
+# Quantized distributions ---
+plot_qmtr_ratio_2 <- function(mdata_ratio
+                              , metadata
+                              , metadata_features_summarize
+                              , summary.precedence = NULL
+                              , metadata_features_facet = NULL
+                              , facet.precedence = NULL
+                              , plot.title = NULL
+                              , qn = seq(0,100,20)
+                              , plot_type = "bar"
+                              , ylab_stack_suffix = "CpG sites"
+                              , bar_width = 0.7
+                              , col_width = 0.9) 
+{
+  qmtr <- get_qmtr_ratio(mdata_ratio, qn = qn)
+  
+  qmtr_molten <- reshape2::melt(qmtr, varnames=c("Ranges","sample.id"))
+  qmtr_molten <- merge(qmtr_molten,metadata, by = "sample.id")
+  
+  qmtr_molten <- plyr::ddply(qmtr_molten, as.formula(paste0("~sample.id"))
+                             , mutate
+                             , perc_value = round(100*value/sum(value),2))
+  
+  qmtr_molten <- plyr::ddply(qmtr_molten, as.formula(paste0("~",metadata_features_summarize,"+Ranges"))
+                             , mutate
+                             , average_value = mean(value))
+  
+  qmtr_molten <- plyr::ddply(qmtr_molten, as.formula(paste0("~",metadata_features_summarize))
+                             , mutate
+                             , perc_average_value = round(100*average_value/sum(unique(average_value)),2))
+  
+  if(!is.null(summary.precedence)) {
+    qmtr_molten[,metadata_features_summarize] <- factor(qmtr_molten[,metadata_features_summarize], levels=summary.precedence) 
+  }
+  if(!is.null(metadata_features_facet) & !is.null(facet.precedence)) {
+    qmtr_molten[,metadata_features_facet] <- factor(qmtr_molten[,metadata_features_facet], levels=facet.precedence)  
+  }
+  
+  if(plot_type=="bar") {
+    pal <- RColorBrewer::brewer.pal(length(qn)-1, 'Reds')
+    
+    nref <- max(qmtr_molten$value)
+    om   <- floor(log10(nref))
+    br <- c(0, floor(nref/10**om)*10**om/4
+            , 2*floor(nref/10**om)*10**om/4
+            , 3*floor(nref/10**om)*10**om/4
+            , floor(nref/10**om)*10**om)
+    
+    pqmtr <- ggplot(qmtr_molten, aes_string(x=metadata_features_summarize,y="average_value", fill="Ranges")) + 
+      geom_col(position = "dodge",width=col_width,col="black") +
+      guides(fill=guide_legend(title = "Methylation range")) +
+      geom_point(data=qmtr_molten, aes_string(x=metadata_features_summarize,y="value", fill="Ranges") 
+                 , position = position_jitterdodge(dodge.width = .9, jitter.width = .2)
+                 , show.legend = F
+                 , size = .8) +  scale_fill_manual(values = pal)
+    
+    if(!is.null(metadata_features_facet)) pqmtr <- pqmtr + facet_wrap(as.formula(paste0("~",metadata_features_facet)), scales = "free_x", nrow=1)
+    
+    pqmtr <- pqmtr +scale_y_continuous(labels = br/10**om, breaks = br) + 
+      theme_bw() + my_theme_2 + theme(plot.title = element_text(size = 8, face = "plain"), legend.key.size = unit(4,'mm')) +
+      ylab(bquote(Count~"("~x~10^.(om)~")")) + ggtitle(plot.title)
+    
+  } else if(plot_type=="stacked_bar") {
+    pal <- rev(RColorBrewer::brewer.pal(length(qn)-1, 'Reds'))
+    
+    qmtr_molten_stack <- unique(qmtr_molten[,c(metadata_features_summarize,"perc_average_value","Ranges",metadata_features_facet)])
+    qmtr_molten_stack$Ranges <- factor(qmtr_molten_stack$Ranges
+                                       , levels = rev(levels(qmtr_molten_stack$Ranges)))
+    
+    pqmtr <- ggplot(qmtr_molten_stack, aes_string(x=metadata_features_summarize,y="perc_average_value", fill="Ranges")) +
+      geom_bar(width = bar_width, stat = "identity", col = 'black', size = 0.25) +
+      scale_fill_manual(values = pal) + theme_bw() +  my_theme + ylab(paste0("% of ",ylab_stack_suffix)) + 
+      guides(fill=guide_legend(title = "Methylation range")) +
+      theme(legend.position = "right", legend.key.size = unit(4,'mm'), axis.text.x = element_text(angle=45, hjust = 1,vjust = 1, size=8))
+    
+    if(!is.null(metadata_features_facet)) pqmtr <- pqmtr + facet_wrap(as.formula(paste0("~",metadata_features_facet)), scales = "free_x", nrow=1)
+  }
+  
+  return(pqmtr)
 }
 
 plot_coverage_stats <- function(m)
@@ -518,48 +665,139 @@ plot_methratio_v3 <- function(mtratio
 }
 
 
-intersect_mtr <- function(mtr_x, mtr_y
-                          , return.obj = "GRanges"
-                          , return.merged = F)
+plot_methratio_v4 <- function(mratio
+                              , plot_type='boxplot' # violin, bar, density, histogram
+                              , average = T
+                              , pal = NULL
+                              , metadata = NULL
+                              , col_by = NULL
+                              , facet_by = NULL
+                              , summarize_by = NULL
+                              , facet_wrap_nrow = NULL
+                              , facet_wrap_ncol = NULL
+                              , x_lab = "Sample"
+                              , y_lab = "Methylation [%]"
+                              , y_breaks = c(0,20,40,60,80,100)
+                              , y_limits = c(0,100)
+                              , compare_dist = F
+                              , my_comparisons = NULL
+                              , plot.title = "BS-seq"
+                              , facet.precedence = NULL
+                              , sample.precedence = NULL
+                              , col.precedence = NULL
+                              , summary.precedence = NULL
+                              , violin.style = 1
+                              , violin.point_color = "black"
+                              , violin.trim = T
+                              , dist_theme = NULL)
 {
-  convert_input <- function(mtr)
-  {
-    if(grepl('methyl', class(mtr))) {
-      mtrranges <- as(mtr,"GRanges")
-    } else if(grepl('data.frame', class(mtr))) {
-      mtrranges <- GenomicRanges::makeGRangesFromDataFrame(mtr)
-    } else if(grepl('GRanges', class(mtr))) {
-      mtrranges <- mtr
-    }
-    return(mtrranges)
+  # Theme ---
+  if(is.null(dist_theme)) {
+    dist_theme <- theme_bw() + my_theme + 
+      theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8)
+            , axis.text.x = element_text(angle=45,hjust = 1,vjust=1)
+            , axis.title.x = element_blank()
+            , legend.key.size = unit(4,'mm'))
   }
-  mtr_x <- convert_input(mtr_x)
-  mtr_y <- convert_input(mtr_y)
   
-  ov <- IRanges::findOverlaps(mtr_x, mtr_y, ignore.strand=T, type = 'any')
-  x <- mtr_x[S4Vectors::queryHits(ov),]
-  y <- mtr_y[S4Vectors::subjectHits(ov),]
+  # Reshaping ---
+  mratio_molten <- reshape2::melt(mratio)
+  colnames(mratio_molten) <- c("pos","sample","value")
+  mratio_molten <- cbind.data.frame(mratio_molten, metadata[match(mratio_molten$sample,metadata$sample.id),])
   
-  if(return.merged) {
-    colnames(x@elementMetadata) <- paste0(colnames(x@elementMetadata),"_x")
-    colnames(y@elementMetadata) <- paste0(colnames(y@elementMetadata),"_y")
-    x@elementMetadata <- cbind.DataFrame(x@elementMetadata, y@elementMetadata)
-    m <- x
-    rm(x,y)
-    if(return.obj == "GRanges") {
-      return(m)
-    } else if(return.obj == "data.frame") {
-      return(as.data.frame(m))
+  if(!is.null(sample.precedence)) mratio_molten$sample.id <- factor(mratio_molten$sample.id, levels = sample.precedence)
+  if(!is.null(facet.precedence) & is.character(facet_by)) mratio_molten[,facet_by] <- factor(mratio_molten[,facet_by], levels = facet.precedence)
+  if(!is.null(col.precedence)) mratio_molten[,col_by] <- factor(mratio_molten[,col_by], levels = col.precedence)
+  
+  # Colors ---
+  if(!is.null(col_by)) {
+    if(violin.style==1) {
+      p0 <- ggplot(mratio_molten, aes_string(x="sample.id", y="value", fill=col_by))   
     } else {
-      stop(message("[!] Invalid return object (GRanges/data.frame)."))
+      p0 <- ggplot(mratio_molten, aes_string(x="sample.id", y="value", col=col_by)) 
     }
+    
   } else {
-    if(return.obj == "GRanges") {
-      return(list("mtr_x"=x,"mtr_y"=y))
-    } else if(return.obj == "data.frame") {
-      return(list("mtr_x"=as.data.frame(x),"mtr_y"=as.data.frame(y)))
-    } else {
-      stop(message("[!] Invalid return object (GRanges/data.frame)."))
-    }
+    p0 <- ggplot(mratio_molten, aes_string(x="sample.id", y="value")) 
   }
+  # Faceting ---
+  if(!is.null(facet_by)) {
+    if(is.character(facet_by) & !any(grepl("~",facet_by)) & length(facet_by)==1) facet_by <- paste0("~",facet_by)
+    p0 <- p0 + facet_wrap(as.formula(facet_by), scales = "free_x", nrow = facet_wrap_nrow,ncol = facet_wrap_ncol)
+  }
+  
+  # Plots ---
+  if(plot_type=='boxplot') {
+    p <- p0 + geom_boxplot(notch = T, outlier.shape = NA, width=0.6, lwd=0.25) + 
+      scale_y_continuous(breaks = y_breaks, limits = y_limits) + dist_theme +
+      guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) + ggtitle(plot.title) +
+      scale_fill_manual(values = pal) + ylab(y_lab) + xlab(x_lab)
+    
+    if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test") 
+    
+  } else if(plot_type=='violin') {
+    dodge <- position_dodge(width = 0.8)
+    if(violin.style==1) {
+      p <- p0 +
+        geom_violin(trim = violin.trim, position = dodge, lwd = 0.25, alpha = 1) + 
+        geom_boxplot(width=0.08, outlier.color = NA, position = dodge, lwd = 0.25, show.legend = F, alpha = 1) + 
+        stat_summary(fun.y=median, geom="point", size=0.5, color=violin.point_color, position = dodge, show.legend = F) +
+        dist_theme + guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +ggtitle(plot.title) +
+        scale_fill_manual(values = pal) + xlab(x_lab) + ylab(y_lab) + scale_y_continuous(breaks = y_breaks, limits = y_limits) 
+    } else if(violin.style==2) {
+      p <- p0 +
+        geom_violin(trim=violin.trim, fill="white") +
+        dist_theme + scale_color_manual(values = pal) + ggtitle(plot.title) +
+        stat_summary(fun.y=median, geom="point", size=1, color=violin.point_color, position = dodge, show.legend = F) +
+        # stat_summary(fun.data ="mean_sdl",mult=1, geom="pointrange", color="red", position = dodge, show.legend = F) +
+        guides(col=guide_legend(nrow=2)) + theme(plot.title = element_text(face="plain", hjust = 0.5, size = 8), legend.key.size = unit(4,'mm')) +
+        ylab(y_lab) + xlab(x_lab) + scale_y_continuous(breaks = y_breaks, limits = y_limits)
+      
+      if(compare_dist) p <- p + stat_compare_means(comparisons = my_comparisons, na.rm = T, size=2, label = "p.signif", method = "wilcox.test")
+    }
+    
+  } else if(plot_type=='density'){
+    
+  } else if(plot_type=='histogram') {
+    
+  } else if(plot_type=="summary" & !is.null(summarize_by)){
+    
+    mratio_sm <- plyr::ddply(mratio_molten, as.formula("~sample.id")
+                             , summarize
+                             , mean = mean(value, na.rm=T)
+                             , median = median(value, na.rm=T)
+                             , min = min(value, na.rm=T)
+                             , max = max(value, na.rm=T)
+                             , sd  = sd(value, na.rm=T)
+                             , l = length(value)
+                             , se = sd(value, na.rm=T)/sqrt(length(value))
+                             , se.md = 1.253*sd(value, na.rm=T)/sqrt(length(value)))
+    mratio_sm <- merge(mratio_sm, metadata, by="sample.id")
+    mratio_sm <- ddply(mratio_sm, as.formula(paste0("~",summarize_by))
+                       , mutate
+                       , mean.mean = mean(mean, na.rm=T)
+                       , se.mean = sd(mean, na.rm=T)/sqrt(length(mean))
+                       , sd.mean = sd(mean, na.rm=T))
+    mratio_sm$summarize_by <- mratio_sm[,summarize_by]
+    
+    if(!is.null(summary.precedence)) mratio_sm$summarize_by <- factor(mratio_sm$summarize_by, levels = summary.precedence)
+    if(!is.null(col.precedence)) mratio_sm[,col_by] <- factor(mratio_sm[,col_by], levels = col.precedence)
+    
+    p <- ggplot(mratio_sm,aes_string(x="summarize_by", y="mean", fill=col_by)) +  
+      geom_col(aes_string(x="summarize_by", y="mean.mean", fill=col_by),position = 'dodge', size = 0.1, col = 'black', width = 0.6) +
+      geom_text(aes(x=summarize_by, y=mean.mean,label=round(mean.mean,2)), size=2, nudge_y = 8)+ 
+      geom_point(aes_string(x="summarize_by", y="mean", fill=col_by), show.legend=F, size = .5, position = position_jitterdodge(dodge.width = 1.2, jitter.width = 1))+
+      dist_theme + scale_fill_manual(values = pal) + ylab("Average methylation [%]") + 
+      scale_y_continuous(breaks = y_breaks, limits = y_limits) + ggtitle(plot.title)
+    
+    if(compare_dist) p <- p + stat_compare_means(data=mratio_sm, mapping = aes_string(x=summarize_by, y="mean", fill=col_by)
+                                                 , comparisons = my_comparisons,size=2
+                                                 , method = "t.test"
+                                                 , inherit.aes = F
+                                                 , label.y = c(78, 85, 90,95))
+    
+  } else {
+    stop(message("[!] Invalid plot type. Please, provide one of # violin, boxplot, summary, density, histogram"))
+  }
+  return(p)
 }

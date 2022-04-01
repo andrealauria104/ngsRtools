@@ -174,21 +174,26 @@ write_to_bed <- function(mtr
   options(scipen=0) # restore default
 }
 
-create_begraph <- function(mtr.ratio, outfile, samp)
+create_begraph <- function(mtr.ratio, outfile, samp, make.zero.based=T)
 {
   message("[+] Creating bedgraph")
   message(" -- output: ", outfile)
   
-  chr   <- sapply(strsplit(rownames(mtr.ratio), "[.]"), "[[", 1)
-  start <- as.numeric(sapply(strsplit(rownames(mtr.ratio), "[.]"), "[[", 2))-1
-  end   <- as.numeric(sapply(strsplit(rownames(mtr.ratio), "[.]"), "[[", 3))
+  rownames(mcall_ratio) <- gsub("\\.1\\.","-1\\.",rownames(mcall_ratio))
+  chr   <- gsub("^(.*)\\.(\\d+)\\.(\\d+)$","\\1",rownames(mcall_ratio))
+  if(make.zero.based) {
+    start <- as.numeric(gsub("^(.*)\\.(\\d+)\\.(\\d+)$","\\2",rownames(mcall_ratio)))-1
+  } else {
+    start <- as.numeric(gsub("^(.*)\\.(\\d+)\\.(\\d+)$","\\2",rownames(mcall_ratio)))
+  }
+  end   <- as.numeric(gsub("^(.*)\\.(\\d+)\\.(\\d+)$","\\3",rownames(mcall_ratio)))
   
   bg <- data.frame('chr' = chr, 'start' = start, 'end' = end)
   bg <- cbind.data.frame(bg, mtr.ratio)
   sidx <- grep(paste0("^",samp,"$"), colnames(bg))
   
   setstring <- paste0("track type=bedGraph name='",outfile,"' description='methratio' visibility=full color=204,0,0 altColor=0,0,153 maxHeightPixels=80:80:11")
-  sink(file = "tmp_1.bg", append = F)
+  sink(file = paste0(samp,".tmp_1.bg"), append = F)
   cat(setstring, "\n")
   sink()
   
@@ -199,12 +204,12 @@ create_begraph <- function(mtr.ratio, outfile, samp)
               row.names = F  ,
               col.names = F  ,
               sep = "\t",
-              file = "tmp_2.bg")
+              file = paste0(samp,".tmp_2.bg"))
   
   options(scipen=0)
   
-  system(paste0('cat tmp_1.bg tmp_2.bg > ', outfile))
-  unlink(c("tmp_1.bg", "tmp_2.bg"))
+  system(paste0('cat ',samp,'.tmp_1.bg ',samp,'.tmp_2.bg > ', outfile))
+  unlink(c(paste0(samp,".tmp_1.bg"), paste0(samp,".tmp_2.bg")))
 }
 
 save_bedgraph <- function(mC, outbg)
