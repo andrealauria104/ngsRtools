@@ -913,6 +913,7 @@ plotExpression <- function(y, gene, experimental_info
                            , show.points=T
                            , point.size=0.8
                            , point.width=0.1
+		           , point.height=NULL
                            , col.width=0.8
                            , error.type="sd" # se
                            , show.names=F
@@ -957,7 +958,7 @@ plotExpression <- function(y, gene, experimental_info
         theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), strip.text = element_text(face = gene.text.face, size = 8)) +
         scale_fill_manual(values = pal) + ylab(paste0("average ",toupper(expression.unit)))
       if(show.points) {
-       p <- p + geom_jitter(data=toplot, aes_string(x=group.by,y="value"),width = point.width,size=point.size, show.legend=F) + 
+       p <- p + geom_jitter(data=toplot, aes_string(x=group.by,y="value"),width = point.width,height = point.height,size=point.size, show.legend=F) + 
          ylab(toupper(expression.unit))
       }
       if(show.names) {
