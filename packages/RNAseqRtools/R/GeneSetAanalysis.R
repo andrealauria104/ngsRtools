@@ -3,18 +3,18 @@ getRankingMetric <- function(x, dea.tool="edgeR", method = "logFC_PValue",decrea
 {
   if(dea.tool=="edgeR") {
   	if(method=="logFC_PValue") {
-  		message(" -- ranking metric: logFC * (-10*log(PValue)) [default]")
-  		rank <- with(x, logFC * (-10*log(PValue)))
+  		message(" -- ranking metric: logFC * (-log10(PValue)) [default]")
+  		rank <- with(x, logFC * (-log10(PValue)))
   	} else if(method=="logFC") {
   		message(" -- ranking metric: logFC")
   		warning("[!] By ranking with logFC only, you are not using the statistical information resulting from DE analysis.")
   		rank <- x[,"logFC"]
   	} else if(method=="PValue") {
-  		message(" -- ranking metric: sign(logFC) * (-10*log(PValue))")
-  		rank <- with(x, sign(logFC) * (-10*log(PValue)))
+  		message(" -- ranking metric: sign(logFC) * (-log10(PValue))")
+  		rank <- with(x, sign(logFC) * (-log10(PValue)))
   	} else if(method=="FDR") {
-  		message(" -- ranking metric: sign(logFC) * (-10*log(FDR))")
-  		rank <- with(x, sign(logFC) * (-10*log(FDR)))
+  		message(" -- ranking metric: sign(logFC) * (-log10(FDR))")
+  		rank <- with(x, sign(logFC) * (-log10(FDR)))
   	}else if(method=="lrt") {
   		message(" -- ranking metric: sign(logFC) * LR")
   		rank <- with(x, sign(logFC) * LR)  
