@@ -11,12 +11,12 @@ plot_cmarker_expression <- function(ebs, genes, pal
 {
   if(is.null(assay.type)) {
     if(log) {
-      marker <- logcounts(ebs)[genes,]
+      marker <- logcounts(ebs)[genes,,drop=F]
     } else {
-      marker <- normcounts(ebs)[genes,]
+      marker <- normcounts(ebs)[genes,,drop=F]
     }
   } else {
-    marker <- assay(ebs, assay.type)[genes,]
+    marker <- assay(ebs, assay.type)[genes,,drop=F]
   }
   
   marker <- reshape2::melt(marker)
