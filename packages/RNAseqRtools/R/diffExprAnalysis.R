@@ -913,7 +913,7 @@ plotExpression <- function(y, gene, experimental_info
                            , show.points=T
                            , point.size=0.8
                            , point.width=0.1
-		           , point.height=NULL
+                           , point.height=NULL
                            , col.width=0.8
                            , error.type="sd" # se
                            , show.names=F
@@ -931,8 +931,9 @@ plotExpression <- function(y, gene, experimental_info
   }
   if(!is.null(group.by)) {
     message(" -- averaging over groups: ", group.by)
-    
-    toplot$group <- experimental_info[,group.by]
+    colnames(experimental_info)[grep("^sample$",colnames(experimental_info),ignore.case = T)] <- "sample"
+    toplot <- merge(toplot, experimental_info, by = "sample")
+    toplot$group <- toplot[,group.by]
     if(error.type=="sd") {
       toplot <- ddply(toplot, .(gene, group)
                       , mutate
