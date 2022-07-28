@@ -689,6 +689,8 @@ plot_methratio_v4 <- function(mratio
                               , violin.style = 1
                               , violin.point_color = "black"
                               , violin.trim = T
+                              , violin.adjust = 1
+                              , violin.scale = "width"
                               , dist_theme = NULL)
 {
   # Theme ---
@@ -739,14 +741,14 @@ plot_methratio_v4 <- function(mratio
     dodge <- position_dodge(width = 0.8)
     if(violin.style==1) {
       p <- p0 +
-        geom_violin(trim = violin.trim, position = dodge, lwd = 0.25, alpha = 1) + 
+        geom_violin(trim = violin.trim, adjust = violin.adjust, scale = violin.scale, position = dodge, lwd = 0.25, alpha = 1) + 
         geom_boxplot(width=0.08, outlier.color = NA, position = dodge, lwd = 0.25, show.legend = F, alpha = 1) + 
         stat_summary(fun.y=median, geom="point", size=0.5, color=violin.point_color, position = dodge, show.legend = F) +
         dist_theme + guides(col = guide_legend(nrow=2), fill = guide_legend(nrow = 2)) +ggtitle(plot.title) +
         scale_fill_manual(values = pal) + xlab(x_lab) + ylab(y_lab) + scale_y_continuous(breaks = y_breaks, limits = y_limits) 
     } else if(violin.style==2) {
       p <- p0 +
-        geom_violin(trim=violin.trim, fill="white") +
+        geom_violin(trim=violin.trim, adjust = violin.adjust, scale = violin.scale, fill="white") +
         dist_theme + scale_color_manual(values = pal) + ggtitle(plot.title) +
         stat_summary(fun.y=median, geom="point", size=1, color=violin.point_color, position = dodge, show.legend = F) +
         # stat_summary(fun.data ="mean_sdl",mult=1, geom="pointrange", color="red", position = dodge, show.legend = F) +
