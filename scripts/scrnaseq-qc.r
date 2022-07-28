@@ -3,10 +3,11 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # 
 # single cell RNA-sequencing - quality controls #
 # # # # # # # # # # # # # # # # # # # # # # # # #
-
+knitr::opts_chunk$set(echo = T, results = "hide", warning=F)
 # 0. Resources ----
 # Command line/Env variables ---
-suppressWarnings(suppressMessages(require(docopt)))
+suppressPackageStartupMessages(library(docopt))
+
 'Usage:
    scrnaseq-qc.r [-q <qcmatrix> -c <counts> -m <metadata> -g <gencode> -p <pipeline> -b <biotype> -f <features> -a <analysis> -l <logscale> -o <outdir>]
 
@@ -60,7 +61,8 @@ if(!dir.exists(FIGDIR)) dir.create(FIGDIR, recursive = T)
 if(!dir.exists(RESDIR)) dir.create(RESDIR, recursive = T)
 
 # requirements ---
-suppressWarnings(suppressMessages(require(scRNAseqRtools)))
+suppressPackageStartupMessages(library(scRNAseqRtools))
+
 # helper functions 
 get_comma_arglist <- function(argument)
 {
@@ -157,6 +159,7 @@ for(feature in metadata_features) {
 
 #' ### 3. Explore QC results
 #' Global alignment statistics
+#+ results=TRUE
 DT::datatable(mapping_stats, rownames = F, filter = 'top')
 
 outfile <- paste0(RESDIR, "/mapping_stats.rds")
@@ -166,6 +169,7 @@ outfile <- paste0(RESDIR, "/mapping_stats.txt")
 write.table(mapping_stats, file = outfile, row.names = F, quote = F, sep = "\t")
 
 #' Gene biotype statistics
+#+ results=TRUE
 DT::datatable(biotypes_stats, rownames = F, filter = 'top')
 
 outfile <- paste0(RESDIR, "/biotypes_stats.rds")
