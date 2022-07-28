@@ -919,8 +919,7 @@ plotExpression <- function(y, gene, experimental_info
                            , show.names=F
                            , show.legend=T
                            , names.rot=0
-                           , gene.text.face="bold"
-                           ) 
+                           , gene.text.face="bold") 
 {
   if(length(gene)>1) {
     toplot <- reshape2::melt(y[[expression.unit]][gene,], varnames=c("gene","sample"))
@@ -929,24 +928,26 @@ plotExpression <- function(y, gene, experimental_info
     toplot$sample <- rownames(toplot)
     toplot$gene <- gene
   }
+  # browser()
   if(!is.null(group.by)) {
     message(" -- averaging over groups: ", group.by)
     colnames(experimental_info)[grep("^sample$",colnames(experimental_info),ignore.case = T)] <- "sample"
     toplot <- merge(toplot, experimental_info, by = "sample")
-    toplot$group <- toplot[,group.by]
+    
+    toplot$group <- toplot[,group.by] # tmp variable to group by
     if(error.type=="sd") {
       toplot <- ddply(toplot, .(gene, group)
                       , mutate
                       , av = mean(value)
                       , sd = sd(value))
-  
+      
     } else if(error.type=="se") {
       toplot <- ddply(toplot, .(gene, group)
                       , mutate
                       , av = mean(value)
                       , sd = sd(value)/sqrt(length(value)))
     }
-    colnames(toplot)[which(colnames(toplot)=="group")] <- group.by
+    toplot$group <- NULL # rm tmp variable
     
     if(!is.null(ord_idx)) toplot[,group.by] <- factor(toplot[,group.by], levels = ord_idx)
     if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,group.by])))
@@ -959,8 +960,8 @@ plotExpression <- function(y, gene, experimental_info
         theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), strip.text = element_text(face = gene.text.face, size = 8)) +
         scale_fill_manual(values = pal) + ylab(paste0("average ",toupper(expression.unit)))
       if(show.points) {
-       p <- p + geom_jitter(data=toplot, aes_string(x=group.by,y="value"),width = point.width,height = point.height,size=point.size, show.legend=F) + 
-         ylab(toupper(expression.unit))
+        p <- p + geom_jitter(data=toplot, aes_string(x=group.by,y="value"),width = point.width,height = point.height,size=point.size, show.legend=F) + 
+          ylab(toupper(expression.unit))
       }
       if(show.names) {
         if(names.rot==45) {
@@ -976,10 +977,10 @@ plotExpression <- function(y, gene, experimental_info
     }
   } else {
     if(is.null(ord_idx)) {
-    	if("group"%in%colnames(y$samples)) {
-     	  ord_idx <- rownames(y$samples[order(y$samples$group),])
+      if("group"%in%colnames(y$samples)) {
+        ord_idx <- rownames(y$samples[order(y$samples$group),])
       } else {
-	      ord_idx <- colnames(y)
+        ord_idx <- colnames(y)
       }
     }
     toplot$sample <- factor(toplot$sample, levels=ord_idx) 
@@ -994,6 +995,7 @@ plotExpression <- function(y, gene, experimental_info
   
   return(p)
 }
+
 # DESeq2 ---
 calculateDiffExprDESeq2 <- function(counts
                                     , info_analysis
