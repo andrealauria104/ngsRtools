@@ -138,7 +138,7 @@ plot_venn_diagram <- function(vd_list
   }
   
   names(vd_list) <- gsub("_"," ", names(vd_list))
-  
+  futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
   vd <- VennDiagram::venn.diagram(
     x = vd_list
     
@@ -172,13 +172,12 @@ plot_venn_diagram <- function(vd_list
   if( !is.null(outfig) ) {
     message(" -- Save to: ", outfig)
     pdf(file=outfig, paper = "a4", h=unit(plot.h,'cm'), w=unit(plot.w,'cm'))
-    grid.draw(vd)
+    grid::grid.draw(vd)
     dev.off()
     
   }
-  rmlog <- list.files(pattern = 'VennDiagram.*.log')
-  unlink(rmlog)
-  grid.draw(vd)
+  
+  grid::grid.draw(vd)
 }
 
 ## Plot Grid ----
