@@ -15,6 +15,5 @@ Depends:
     utilsRtools,
 Imports:
    Biostrings,
-   GenomicRanges,
-   genomation
+   GenomicRanges
 License: MIT + file LICENSE
