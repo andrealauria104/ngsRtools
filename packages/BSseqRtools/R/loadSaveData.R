@@ -8,6 +8,7 @@ read_mcall <- function(mfiles
                        , cv   = 10
                        , hiTh = 99.9
                        , normalize = F
+                       , header = TRUE
                        , pipeline
                        , ...) {
   
@@ -61,7 +62,7 @@ read_mcall <- function(mfiles
                               , sample.id  = sample.id
                               , treatment  = treatment
                               , assembly   = assembly
-                              , header     = TRUE
+                              , header     = header
                               , context    = context
                               , resolution = "base"
                               , mincov     = cv
