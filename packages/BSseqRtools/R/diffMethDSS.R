@@ -22,7 +22,11 @@ prepareDSS <- function(path_files
     
     read_bsmap <- function(x) 
     {
-      methylc_data <- read.delim(x, header=F, stringsAsFactors=F)[,c(1:2,6,7)]
+      methylc_data <- read.delim(x, header=F, stringsAsFactors=F)[,c(1:2,5,6)]
+      # coerce coverage column (effCT) to integer
+      methylc_data[,4] <- round(methylc_data[,4])
+      methylc_data$X <- round(methylc_data[,3]*methylc_data[,4])
+      methylc_data[,3] <- NULL
       colnames(methylc_data) <- c("chr","pos","N","X")
       return(methylc_data)
     }
