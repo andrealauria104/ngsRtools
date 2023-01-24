@@ -22,9 +22,7 @@ prepareDSS <- function(path_files
     
     read_bsmap <- function(x) 
     {
-      methylc_data <- read.delim(x, header=F, stringsAsFactors=F)[,c(1:2,7:8)]
-      methylc_data$X <- methylc_data[,4]-methylc_data[,3]
-      methylc_data[,3] <- NULL
+      methylc_data <- read.delim(x, header=F, stringsAsFactors=F)[,c(1:2,8,7)]
       colnames(methylc_data) <- c("chr","pos","N","X")
       return(methylc_data)
     }
