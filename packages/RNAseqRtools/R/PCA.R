@@ -3,7 +3,6 @@ getPCA <- function(x, cor.test.loadings=F)
 {
   message("[+] Run PCA ...")
   rna <- t(x)
-  rna <- rna[,colSums(rna)>1]
   pca <- prcomp(rna, scale. = T, center = T)
   pca_summary <- summary(pca)$importance
   pca_load <- t(t(pca$rotation)*pca_summary[1,])
