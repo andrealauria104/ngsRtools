@@ -921,10 +921,17 @@ plotExpression <- function(y, gene, experimental_info
                            , names.rot=0
                            , gene.text.face="bold") 
 {
+  
+  if(class(y)=="DGEList") {
+    expr <- y[[expression.unit]]
+  } else {
+    expr <- y
+  }
+  
   if(length(gene)>1) {
-    toplot <- reshape2::melt(y[[expression.unit]][gene,], varnames=c("gene","sample"))
+    toplot <- reshape2::melt(expr[gene,], varnames=c("gene","sample"))
   }else {
-    toplot <- reshape2::melt(y[[expression.unit]][gene,])
+    toplot <- reshape2::melt(expr[gene,])
     toplot$sample <- rownames(toplot)
     toplot$gene <- gene
   }
