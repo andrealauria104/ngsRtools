@@ -925,7 +925,7 @@ plotExpression <- function(y, gene, experimental_info
   if(class(y)=="DGEList") {
     expr <- y[[expression.unit]]
   } else {
-    expr <- y
+    expr <- as.matrix(y)
   }
   
   if(length(gene)>1) {
