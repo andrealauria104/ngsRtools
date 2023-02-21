@@ -1,128 +1,4 @@
 # Differential Expression Analysis ====
-# still here for compatibility reason, 
-# will be deprecated as soon as possible
-calculateDiffExpr <- function(m
-                              , group  = NULL
-                              , filter = T
-                              , filter.cpm.th = 1
-                              , filter.sample.th = 2
-                              , method = "exact"
-                              , reference = NULL # Control group
-                              , design = NULL # Custom design matrix
-                              , cf = NULL # Testing coefficient (default: all columns in design matrix against control)
-                              , contrast = NULL # Contrast matrix
-                              , return.y  = F) {
-  
-  # Compute differential expression with EdgeR
-  message("[*] Run EdgeR for Differential Expression Analysis")
-  
-  if(is.null(group)) {
-    group <- as.factor(colnames(m))
-    if(sum(table(levels(group))>1)==0) {
-      stop(message("[!] Invalid experimental groups (< 2 replicates per condition)."))
-    }
-  } else {
-    m <- m[,names(group)]
-    if (!is.factor(group))   group <- as.factor(group)
-    if (!is.null(reference)) group <- relevel(group, reference)
-  }
-  
-  message(" -- Condition: ", paste0(levels(group), collapse = "-"))
-  
-  y <- edgeR::DGEList(counts=m, genes=rownames(m), group = group)
-  y <- edgeR::calcNormFactors(y)
-  
-  # Clean environment
-  rm(m)
-  gc(verbose = F)
-  
-  if(filter) {
-    message(" -- Filtering lowly expressed genes")
-    message("    -- Threshods:")
-    message("     * CPM = "     , filter.cpm.th)
-    message("     * Samples = " , filter.sample.th)
-    
-    if(filter.sample.th>=1) {
-      # Number of samples
-      fs <- filter.sample.th
-    } else {
-      # Percentage of samples
-      fs <- floor(ncol(m)*filter.sample.th)
-    }
-    
-    keep <- rowSums(edgeR::cpm(y)>filter.cpm.th) >= fs
-    y <- y[keep, , keep.lib.sizes=FALSE]
-  }
-  
-  if(is.null(design)) {
-    # Standard design matrix 
-    # First column is control ( = reference in group)
-    message(" -- Standard design matrix")
-    design <- model.matrix(~group)
-    colnames(design)[-1] <- paste0(levels(group)[-1], "vs", levels(group)[1])
-  } else {
-    # Customized design matrix
-    message(" -- Custom model matrix")
-  }
-  
-  if(is.null(cf) & is.null(contrast)) {
-    # Test all columns in design matrix (ANOVA-like)
-    # parametrize model wrt control ( = reference in group)
-    cf  <- 2:ncol(design)
-  }
-  
-  rownames(design) <- colnames(y)
-  y <- edgeR::estimateDisp(y, design, robust=TRUE)
-  
-  message(" -- Testing differential expression, method: ", method)
-  if(length(cf)>1) {
-    message(" -- ANOVA-like for multiple group comparison") 
-  }
-  
-  if(method=="exact") {
-    # Exact test
-    de <- edgeR::exactTest(y)
-    de <- edgeR::topTags(de, n = Inf)
-    
-  } else if(method=="lrt") {
-    # Likelihood-ratio test
-    fit <- edgeR::glmFit(y, design)
-    if(is.null(contrast)){
-      # Standard comparison
-      lrt <- edgeR::glmLRT(fit, coef=cf)
-    } else {
-      # GLM with contrasts
-      lrt <- edgeR::glmLRT(fit, contrast = contrast)
-    }
-    de  <- edgeR::topTags(lrt, n = Inf)
-    
-  } else if(method=="qlf") {
-    # Quasi-likelihood F-test
-    fit <- edgeR::glmQLFit(y, design)
-    if(is.null(contrast)){
-      # Standard comparison
-      qlf <- edgeR::glmQLFTest(fit, coef=cf)
-    } else {
-      # GLM with contrasts
-      qlf <- edgeR::glmQLFTest(fit, contrast = contrast)
-    }
-    de  <- edgeR::topTags(qlf, n = Inf)
-    
-  } else {
-    stop(message("[-] Method not available. Please, provide a valid one ( exact / lrt / qlf )."))
-  }
-  
-  if(return.y) {
-    
-    res <- list("y"  = y,
-                "de" = de)
-    return(res)
-    
-  } else {
-    return(de)
-  }
-}
-
 #' Differential Expression Analysis with edgeR
 #'
 #' Implementation of statistical models and tests 
@@ -136,7 +12,7 @@ calculateDiffExpr <- function(m
 #'
 #' @examples
 #' \dontrun{
-#'     dea <- calculateDiffExprEdgeR(y, expreimental_info
+#'     dea <- calculateDiffExprEdgeR(y, experimental_info
 #'     , group = experimental_info$group)
 #' }
 #' 
@@ -395,58 +271,6 @@ getDEgsigned <- function(deg, signed=(-1))
   gene.idx <- names(y[which(sign(y)==signed)])
   
   return(x[gene.idx,])
-}
-
-# keep for compatibility, to be deprecated
-plotRNAVolcanos <- function(de, lfcTh=1, pvTh=0.05, top=5, gtitle = NULL)
-{
-  fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
-  pvIdx <- grep("adj.P.Val|FDR", colnames(de), value = T)
-  tmp   <- de[,c(fcIdx,pvIdx)]
-  colnames(tmp) <- c("lfc","padj")
-  tmp$status <- "none"
-  tmp$status[which(tmp$lfc>=lfcTh & tmp$padj<=pvTh)] <- "Up-regulated"
-  tmp$status[which(tmp$lfc<=(-lfcTh) & tmp$padj<=pvTh)] <- "Down-regulated"
-  tmp$status <- factor(tmp$status)
-  
-  topUP <- tmp[tmp[,'status']=="Up-regulated",]
-  nup <- nrow(topUP)
-  topDW <- tmp[tmp[,'status']=="Down-regulated",]
-  ndw <- nrow(topDW)
-  
-  if(!is.null(top)) {
-    topUP <- rownames(topUP[1:top,])
-    topDW <- rownames(topDW[1:top,])
-    
-    tmp$lab <- rownames(tmp)
-    tmp$lab[-which(rownames(tmp)%in%c(topDW, topUP))] <- ""
-  } else {
-    tmp$lab <- ""
-  }
-  
-  p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=1, alpha=0.6) + theme_bw() +
-    geom_hline(yintercept = -log10(pvTh), linetype = 'dashed', lwd = 0.25) + 
-    geom_vline(xintercept = lfcTh, linetype = 'dashed', lwd = 0.25) +
-    geom_vline(xintercept = -lfcTh, linetype = 'dashed', lwd = 0.25) +
-    xlab("logFC") + ylab("adjusted P-value") +
-    theme_bw() + my_theme_2 + ggtitle(gtitle) +
-    scale_color_manual(values = c('#004C99','#404040','#CC0000')) +
-    ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
-    geom_label(
-      data    = subset(tmp, status=="Up-regulated"),
-      mapping = aes(x = max(tmp$lfc)-1.5, y = max(-log10(tmp$padj))-30, label = nup, col = status),
-      size = 2,
-      show.legend = F
-    ) +
-    geom_label(
-      data    = subset(tmp, status=="Down-regulated"),
-      mapping = aes(x = min(tmp$lfc)+1.5, y = max(-log10(tmp$padj))-20, label = ndw, col = status),
-      size = 2,
-      show.legend = F
-    ) +
-    guides(col = guide_legend(nrow = 2))
-  
-  return(p)
 }
 
 plotDiffExprRes <- function(de
