@@ -120,6 +120,7 @@ get_heatmap4 <- function(m
                          , fig_out  = NULL
                          , retHm    = F
                          , bm = T
+                         , show_bm_row_names = F
                          , myPalette = NULL
                          , myZscale = NULL
                          , myLegend = "CPM"
@@ -131,8 +132,7 @@ get_heatmap4 <- function(m
   
   base_mean <- rowMeans(m)
   if(scale) {
-    m_scaled <- t(apply(m, 1, scale))
-    colnames(m_scaled) <- colnames(m)
+    m_scaled <- t(scale(t(m)))
   } else {
     m_scaled <- m
   }
@@ -205,7 +205,8 @@ get_heatmap4 <- function(m
     bmh <- ComplexHeatmap::Heatmap(base_mean 
                                    , name = "Average Expression"
                                    , column_names_gp = gpar(fontsize=text_size)
-                                   , show_row_names = FALSE
+                                   , row_names_gp = gpar(fontsize=text_size)
+                                   , show_row_names = show_bm_row_names
                                    , width = unit(3, "mm") 
                                    , col = bmramp
                                    , heatmap_legend_param = list(title = paste0("Average ",myLegend)
@@ -218,20 +219,20 @@ get_heatmap4 <- function(m
                                                                  # legend_direction = "vertical"
                                                                  legend_direction = "horizontal"))
     
-    hmOut <- hm + bmh
+    hm_out <- hm + bmh
   } else {
-    hmOut <- hm 
+    hm_out <- hm 
   }
   
   if(!is.null(fig_out)){
     pdf(file = fig_out, useDingbats = F, h=8, w=3, paper = "a4")
-    ComplexHeatmap::draw(hmOut, heatmap_legend_side = "right")
+    ComplexHeatmap::draw(hm_out, heatmap_legend_side = "right")
     dev.off()
   } else{
-    ComplexHeatmap::draw(hmOut, heatmap_legend_side = "right")
+    ComplexHeatmap::draw(hm_out, heatmap_legend_side = "right")
   }
   
-  if(retHm) return(hmOut)
+  if(retHm) return(hm_out)
 }
 
 get_clusters <- function(m, hm){
