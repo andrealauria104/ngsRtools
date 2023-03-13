@@ -50,6 +50,7 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
                                , norm.fact.method = "TMM"
                                , normalized.lib.sizes = TRUE
                                , tlen = NULL
+                               , return.normalized.expr = TRUE
                                , ...)
 {
   
@@ -123,17 +124,19 @@ processRNAseqEdgeR <- function(m, experimental_info = NULL
   message(" -- Normalization factors, method = ", norm.fact.method)
   y <- edgeR::calcNormFactors(y, method =  norm.fact.method, ...)
   
-  if(!normalized.lib.sizes) warning("Normalization factors are ignored in RPKM/CPM calculation. Avoid between samples comparisons!")
-  
-  if(expression.unit == "cpm") {
-    y$CPM    <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)
-    y$logCPM <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes, log = T)
-  } else if (expression.unit == "rpkm") {
-    if(is.null(tlen)) {
-      stop(message("[!] Please, provide transcript lengths for RPKM unit."))
+  if(return.normalized.expr) {
+    if(!normalized.lib.sizes) warning("Normalization factors are ignored in RPKM/CPM calculation. Avoid between samples comparisons!")
+    
+    if(expression.unit == "cpm") {
+      y$CPM    <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes)
+      y$logCPM <- edgeR::cpm(y, normalized.lib.sizes = normalized.lib.sizes, log = T)
+    } else if (expression.unit == "rpkm") {
+      if(is.null(tlen)) {
+        stop(message("[!] Please, provide transcript lengths for RPKM unit."))
+      }
+      y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes)
+      y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes, log = T)
     }
-    y$RPKM    <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes)
-    y$logRPKM <- edgeR::rpkm(y, gene.length = tlen[rownames(y)], normalized.lib.sizes = normalized.lib.sizes, log = T)
   }
   
   return(y)
