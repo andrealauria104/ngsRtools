@@ -104,6 +104,11 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     }
   }
   
+  if(!identical(rownames(design), colnames(y))) {
+    message("[!] Setting rownames in design matrix equal to sample names.")
+    rownames(design) <- colnames(y)
+  }
+  
   if(is.null(cf) & is.null(contrast)) {
     if(anovalike) {
       # Test all columns in design matrix (ANOVA-like)
@@ -115,7 +120,6 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     }
   }
   
-  rownames(design) <- colnames(y)
   message(" -- Estimating dispersion, robust = ", robust.dispersion)
   y <- edgeR::estimateDisp(y, design, robust=robust.dispersion)
   
@@ -125,6 +129,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   }
   message(" -- Design matrix: ")
   print(design)
+  
   if(method=="exact") {
     # Exact test
     de <- edgeR::exactTest(y)
