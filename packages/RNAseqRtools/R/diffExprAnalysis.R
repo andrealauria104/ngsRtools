@@ -28,7 +28,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                                    , expression.unit = "cpm"
                                    , tlen = NULL
                                    , method = "exact"
-                                   , robust.dispersion = T
+                                   , robust.dispersion = TRUE
+                                   , robust.ql = FALSE
                                    , anovalike = F # Activate ANOVA-like test for any difference (alternative to cf,contrast)
                                    , design = NULL # Custom design matrix
                                    , cf = NULL # Testing coefficient (default: last column in design matrix)
@@ -43,8 +44,10 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
       cnm <- paste0(contrast[1], contrast[-1], collapse = "-")
       message(" -- Contrast: ", cnm)
       mcontrast <- limma::makeContrasts(contrasts = cnm, levels = design)
+      print(mcontrast)
       return(mcontrast)  
     } else {
+      print(contrast)
       return(contrast)
     }
     
@@ -120,8 +123,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   if(length(cf)>1) {
     message(" -- ANOVA-like for multiple group comparison") 
   }
-  message(" -- Design matrix: ", paste0(colnames(design),collapse = '-'))
-  
+  message(" -- Design matrix: ")
+  print(design)
   if(method=="exact") {
     # Exact test
     de <- edgeR::exactTest(y)
@@ -143,7 +146,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     
   } else if(method=="qlf") {
     # Quasi-likelihood F-test
-    fit <- edgeR::glmQLFit(y, design)
+    message(" -- glmQLFit, robust QL = ", robust.ql)
+    fit <- edgeR::glmQLFit(y, design, robust=robust.ql)
     if(is.null(contrast)){
       # Standard comparison
       print_coefficients(cf)
