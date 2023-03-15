@@ -1,16 +1,17 @@
 # Correlation Analysis ====
-reorder_cormat <- function(mcor, reorder_cormat_method = "ward.D")
+reorder_cormat <- function(mcor, reorder_cormat_method = c("ward.D","single","complete"))
 {
   # Use correlation between variables as distance
+  reorder_cormat_method <- match.arg(reorder_cormat_method)
   message("   - hclust method: ", reorder_cormat_method)
-  dd <- as.dist((1-mcor))
+  dd <- as.dist(1-mcor)
   hc <- hclust(dd, method = reorder_cormat_method)
   mcor <- mcor[hc$order, hc$order]
   return(list(mcor=mcor,hc=hc))
 }
 
 plotCorrelation <- function(x
-                            , method = "pearson"
+                            , method = c("pearson","spearman")
                             , reorder = TRUE
                             , reorder_cormat_by_cor_dist = FALSE
                             , reorder_cormat_by_cor_dist_method = "ward.D"
@@ -33,6 +34,8 @@ plotCorrelation <- function(x
                             , column_title = character(0)
                             , ...) {
   
+  method <- match.arg(method)
+  message(" -- compute pairwise correlations, method: ", method)
   mcor <- cor(x, method=method, ...)
   
   if(is.null(myPalette)) {
@@ -105,7 +108,7 @@ plotCorrelation <- function(x
   
   if(reorder) {
     if(reorder_cormat_by_cor_dist) {
-      message(" -- reordering correlation matrix by hclust on correlation distance (1-r).")
+      message(" -- reordering correlation matrix by hclust on (squared) correlation distance (1-r).")
       reorder_cormat_out <- reorder_cormat(mcor, reorder_cormat_method = reorder_cormat_by_cor_dist_method)
       cluster_columns <- as.dendrogram(reorder_cormat_out$hc)
       cluster_rows <- as.dendrogram(reorder_cormat_out$hc)
