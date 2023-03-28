@@ -18,7 +18,8 @@
 #' 
 #'
 #' @export
-calculateDiffExprEdgeR <- function(y, experimental_info = NULL
+calculateDiffExprEdgeR <- function(y
+                                   , experimental_info = NULL
                                    , gene_info = NULL
                                    , group  = NULL
                                    , reference = NULL # Control group
@@ -34,12 +35,15 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                                    , design = NULL # Custom design matrix
                                    , cf = NULL # Testing coefficient (default: last column in design matrix)
                                    , contrast = NULL # Contrast matrix - character/numeric vector
-                                   , return.y  = F) {
+                                   , return.y  = F # Return y? For backward compatibility, better set return.res.type
+                                   , return.res.type = c("de","y","all") # What to return
+                                   ) {
   
   
   # Compute differential expression with edgeR
   expression.unit <- match.arg(expression.unit)
   method <- match.arg(method)
+  return.res.type <- match.arg(return.res.type)
   
   # Internals ---
   get_contrast <- function(contrast, design)
@@ -65,6 +69,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
     if(length(nmcf)>1) nmcf <- paste0(nmcf,collapse = "-")
     message(" -- Testing coefficient: ",nmcf)
   }
+  
   message("[*] Run edgeR for Differential Expression Analysis")
   
   if(is.matrix(y) | is.data.frame(y)) {
@@ -152,7 +157,7 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
       mcontrast <- get_contrast(contrast = contrast, design = design)
       lrt <- edgeR::glmLRT(fit, contrast = mcontrast)
     }
-    de  <- edgeR::topTags(lrt, n = Inf)
+    de <- edgeR::topTags(lrt, n = Inf)
     
   } else if(method=="qlf") {
     # Quasi-likelihood F-test
@@ -167,18 +172,36 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
       mcontrast <- get_contrast(contrast = contrast, design = design)
       qlf <- edgeR::glmQLFTest(fit, contrast = mcontrast)
     }
-    de  <- edgeR::topTags(qlf, n = Inf)
+    de <- edgeR::topTags(qlf, n = Inf)
     
   } else {
-    stop(message("[-] Test method not available. Please, provide a valid one ( exact / lrt / qlf )."))
+    message("[-] Test method not available. Please, provide a valid one ( exact / lrt / qlf ).")
   }
   
-  if(return.y) {
-    res <- list("y"  = y,
-                "de" = de)
+  if(return.y || return.res.type=="y") {
+    
+    res <- list("y" = y, "de" = de)
     return(res)
-  } else {
+    
+  } else if(return.res.type=="all" &&  method=="qlf") {
+    
+    res <- list("y"=y, "de"=de, "fit"=fit, "qlf"=qlf)
+    return(res)
+    
+  } else if(return.res.type=="all" &&  method=="lrt") {
+    
+    res <- list("y"=y, "de"=de, "fit"=fit, "lrt"=lrt)
+    return(res)
+    
+  } else if(return.res.type=="all" &&  method=="exact") {
+    
+    res <- list("y"=y, "de"=de, "et"=et)
+    return(res)
+    
+  } else if(return.res.type=="de") {
+    
     return(de)
+    
   }
 }
 
