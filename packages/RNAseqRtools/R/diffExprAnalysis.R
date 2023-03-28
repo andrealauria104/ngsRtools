@@ -25,9 +25,9 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                                    , filter = T
                                    , filter.expr.th = 1
                                    , filter.sample.th = 2
-                                   , expression.unit = "cpm"
+                                   , expression.unit = c("cpm","rpkm")
                                    , tlen = NULL
-                                   , method = "exact"
+                                   , method = c("qlf","lrt","exact")
                                    , robust.dispersion = TRUE
                                    , robust.ql = FALSE
                                    , anovalike = F # Activate ANOVA-like test for any difference (alternative to cf,contrast)
@@ -36,7 +36,11 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                                    , contrast = NULL # Contrast matrix - character/numeric vector
                                    , return.y  = F) {
   
+  
   # Compute differential expression with edgeR
+  expression.unit <- match.arg(expression.unit)
+  method <- match.arg(method)
+  
   # Internals ---
   get_contrast <- function(contrast, design)
   {
@@ -73,7 +77,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
                             , filter.expr.th = filter.expr.th
                             , filter.sample.th = filter.sample.th
                             , expression.unit = expression.unit
-                            , tlen = tlen)
+                            , tlen = tlen
+                            , return.normalized.expr = F)
   }
   
   if(is.null(design)) {
@@ -132,8 +137,8 @@ calculateDiffExprEdgeR <- function(y, experimental_info = NULL
   
   if(method=="exact") {
     # Exact test
-    de <- edgeR::exactTest(y)
-    de <- edgeR::topTags(de, n = Inf)
+    et <- edgeR::exactTest(y)
+    de <- edgeR::topTags(et, n = Inf)
     
   } else if(method=="lrt") {
     # Likelihood-ratio test
