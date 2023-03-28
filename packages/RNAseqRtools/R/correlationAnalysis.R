@@ -1,12 +1,19 @@
 # Correlation Analysis ====
-reorder_cormat <- function(mcor, reorder_cormat_method = c("ward.D","single","complete"))
+reorder_cormat <- function(mcor
+                           , reorder_cormat_method = c("ward.D","ward.D2","single","complete","average"))
 {
   # Use correlation between variables as distance
   reorder_cormat_method <- match.arg(reorder_cormat_method)
   message("   - hclust method: ", reorder_cormat_method)
-  dd <- as.dist(1-mcor)
+  
+  if(reorder_cormat_method=="ward.D2") {
+    dd <- as.dist(sqrt(0.5*(1-mcor)))
+  } else {
+    dd <- as.dist(1-mcor)
+  }
   hc <- hclust(dd, method = reorder_cormat_method)
   mcor <- mcor[hc$order, hc$order]
+  
   return(list(mcor=mcor,hc=hc))
 }
 
