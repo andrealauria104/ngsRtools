@@ -442,34 +442,6 @@ fix_de_contrast_names <- function(de, ref)
   return(de)
 }
 
-analyze_de_contrasts <- function(counts, design, test_contrasts
-                                 , method  = "lrt"
-                                 , fdrTh   = 0.05
-                                 , fcTh    = 1
-                                 , lcpmTh  = 0.5
-                                 , fixnm_ref = NULL
-                                 , ...)
-{
-  
-  de <- lapply(colnames(test_contrasts), function(cnt) {
-    message("Contrast: ", cnt)
-    x <- calculateDiffExpr(m          = counts
-                           , design   = design
-                           , contrast = test_contrasts[,cnt]
-                           , method   = method
-                           , ...)
-    y <- getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
-    res <- list("table" = x$table, "sig" = y)
-    return(res)
-  })
-  
-  names(de) <- colnames(test_contrasts)
-  
-  if(!is.null(fixnm_ref)) de <- fix_de_contrast_names(de, ref = fixnm_ref)
-  
-  return(de)
-}
-
 analyze_de_contrasts_v2 <- function(y, test_contrasts
                                  , fdrTh   = 0.05
                                  , fcTh    = 1
@@ -486,9 +458,9 @@ analyze_de_contrasts_v2 <- function(y, test_contrasts
                                 , contrast = cnt
                                 , ... )
     
-    y <- tryCatch(expr = getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
+    sig <- tryCatch(expr = getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
                   , error = function(e) {message(e);return(NA)})
-    res <- list("table" = x$table, "sig" = y)
+    res <- list("table" = x$table, "sig" = sig)
     return(res)
   })
   
