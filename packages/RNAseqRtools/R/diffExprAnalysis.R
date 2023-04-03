@@ -311,7 +311,7 @@ getDEgsigned <- function(deg, signed=(-1))
 }
 
 plotDiffExprRes <- function(de
-                            , type = "volcano" # volcano, MA
+                            , type = c("volcano","MA")
                             , lfcTh = 1
                             , pvTh = 0.05
                             , top = 5
@@ -321,79 +321,113 @@ plotDiffExprRes <- function(de
                             , corrected_pval = T
                             , point.size = 0.5)
 {
+  type <- match.arg(type)
+  
+  # plot differential expression results for edgeR, DESeq2, limma
   if(is.null(pal)) pal <- c('#004C99','#404040','#CC0000')
   
   fcIdx <- grep("logFC|log2FoldChange", colnames(de), value = T)
+  
   if(corrected_pval) {
     pvIdx <- grep("adj.P.Val|FDR|padj", colnames(de), value = T)
+    volcano_lab <- "adjusted P-value"
   } else {
-    pvIdx <- grep("pvalue", colnames(de), value = T)
+    pvIdx <- grep("P.Value|PValue|pvalue", colnames(de), value = T)
+    volcano_lab <- "P-value"
   }
-  cIdx <- grep("baseMean|logCPM", colnames(de), value = T)
-  tmp   <- de[,c(cIdx,fcIdx,pvIdx)]
-  colnames(tmp) <- c("meanc","lfc","padj")
-  tmp$status <- "none"
-  tmp$status[which(tmp$lfc>=lfcTh & tmp$padj<=pvTh)] <- "Up-regulated"
-  tmp$status[which(tmp$lfc<=(-lfcTh) & tmp$padj<=pvTh)] <- "Down-regulated"
-  tmp$status <- factor(tmp$status)
+  message(" -- significance threshold on: ", volcano_lab)
   
-  topUP <- tmp[tmp[,'status']=="Up-regulated",]
-  nup <- nrow(topUP)
-  topDW <- tmp[tmp[,'status']=="Down-regulated",]
-  ndw <- nrow(topDW)
+  cIdx <- grep("baseMean|logCPM|AveExpr", colnames(de), value = T)
   
-  if(!is.null(label_selection)) {
-    tmp$lab <- rownames(tmp)
-    tmp$lab[-which(rownames(tmp)%in%label_selection)] <- ""
+  if(length(fcIdx)!=1 || length(pvIdx)!=1 || length(cIdx)!=1) {
+    message("[!] Invalid format:")
+    if(length(fcIdx)!=1) {
+      message(" -- more than 1 valid Fold Change column")
+      print(fcIdx)
+    }
+    if(length(pvIdx)!=1) {
+      message(" -- more than 1 valid PValue column")
+      print(pvIdx) 
+    }
+    if(length(cIdx)!=1) {
+      message(" -- more than 1 valid average expression column")
+      print(cIdx)
+    }
+  } else {
+    tmp   <- de[,c(cIdx,fcIdx,pvIdx)]
+    colnames(tmp) <- c("meanc","lfc","padj")
+    tmp$status <- "none"
+    tmp$status[which(tmp$lfc>=lfcTh & tmp$padj<=pvTh)] <- "Up-regulated"
+    tmp$status[which(tmp$lfc<=(-lfcTh) & tmp$padj<=pvTh)] <- "Down-regulated"
+    tmp$status <- factor(tmp$status)
     
-  } else if(!is.null(top)) {
-    topUP <- rownames(topUP[1:top,])
-    topDW <- rownames(topDW[1:top,])
+    topUP <- tmp[tmp[,'status']=="Up-regulated",]
+    nup <- nrow(topUP)
+    topDW <- tmp[tmp[,'status']=="Down-regulated",]
+    ndw <- nrow(topDW)
+    
+    if(!is.null(label_selection)) {
+      tmp$lab <- rownames(tmp)
+      tmp$lab[-which(rownames(tmp)%in%label_selection)] <- ""
       
-    tmp$lab <- rownames(tmp)
-    tmp$lab[-which(rownames(tmp)%in%c(topDW, topUP))] <- ""
-  } else {
-    tmp$lab <- ""
+    } else if(!is.null(top)) {
+      topUP <- rownames(topUP[1:top,])
+      topDW <- rownames(topDW[1:top,])
+      
+      tmp$lab <- rownames(tmp)
+      tmp$lab[-which(rownames(tmp)%in%c(topDW, topUP))] <- ""
+    } else {
+      tmp$lab <- ""
+    }
+    
+    if(type=="volcano") {
+      
+      message(" -- plot volcano, thresholds:")
+      message(" - |logFC| = ", lfcTh)
+      message(" - pvalue = ", pvTh)
+      
+      p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=point.size, alpha=0.6) + theme_bw() +
+        geom_hline(yintercept = -log10(pvTh), linetype = 'dashed', lwd = 0.25) + 
+        geom_vline(xintercept = lfcTh, linetype = 'dashed', lwd = 0.25) +
+        geom_vline(xintercept = -lfcTh, linetype = 'dashed', lwd = 0.25) +
+        xlab("logFC") + ylab(volcano_lab) +
+        theme_bw() + my_theme_2 + ggtitle(gtitle) +
+        scale_color_manual(values = pal) +
+        ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
+        geom_label(
+          data    = subset(tmp, status=="Up-regulated"),
+          mapping = aes(x = max(tmp$lfc)-.5, y = 1, label = nup, col = status),
+          size = 2,
+          show.legend = F
+        ) +
+        geom_label(
+          data    = subset(tmp, status=="Down-regulated"),
+          mapping = aes(x = min(tmp$lfc)+.5, y = 1, label = ndw, col = status),
+          size = 2,
+          show.legend = F
+        ) +
+        guides(col = guide_legend(nrow = 2))
+    } else if(type=="MA") {
+      
+      message(" -- plot MA, thresholds:")
+      message(" - |logFC| = ", lfcTh)
+      message(" - pvalue = ", pvTh)
+      
+      if(cIdx=="baseMean") tmp$meanc <- log2(tmp$meanc)
+      p0 <- ggplot(data = tmp, aes(x=meanc, y=lfc, col=status, label=lab)) + geom_point(data=subset(tmp, status=="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=point.size, alpha = 0.5)
+      p1 <- geom_point(data= subset(tmp, status!="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=point.size, alpha = 0.9)
+      
+      p <- p0 + p1 + theme_bw() +
+        geom_hline(yintercept = 0, linetype = 'dashed', lwd = 0.25) + 
+        ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
+        ylab("logFC") + xlab("mean normalized counts") +
+        theme_bw() + my_theme_2 + ggtitle(gtitle) +
+        scale_color_manual(values = pal) +
+        guides(col = guide_legend(nrow = 2))
+    }
+    return(p)
   }
-        
-  
-  if(type=="volcano") {
-    p <- ggplot(tmp, aes(x=lfc, y=-log10(padj),col=status, label=lab)) + geom_point(size=point.size, alpha=0.6) + theme_bw() +
-      geom_hline(yintercept = -log10(pvTh), linetype = 'dashed', lwd = 0.25) + 
-      geom_vline(xintercept = lfcTh, linetype = 'dashed', lwd = 0.25) +
-      geom_vline(xintercept = -lfcTh, linetype = 'dashed', lwd = 0.25) +
-      xlab("logFC") + ylab("adjusted P-value") +
-      theme_bw() + my_theme_2 + ggtitle(gtitle) +
-      scale_color_manual(values = pal) +
-      ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
-      geom_label(
-        data    = subset(tmp, status=="Up-regulated"),
-        mapping = aes(x = max(tmp$lfc)-.5, y = 1, label = nup, col = status),
-        size = 2,
-        show.legend = F
-      ) +
-      geom_label(
-        data    = subset(tmp, status=="Down-regulated"),
-        mapping = aes(x = min(tmp$lfc)+.5, y = 1, label = ndw, col = status),
-        size = 2,
-        show.legend = F
-      ) +
-      guides(col = guide_legend(nrow = 2))
-  } else if(type=="MA") {
-    if(cIdx=="baseMean") tmp$meanc <- log2(tmp$meanc)
-    p0 <- ggplot(data = tmp, aes(x=meanc, y=lfc, col=status, label=lab)) + geom_point(data=subset(tmp, status=="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=point.size, alpha = 0.5)
-    p1 <- geom_point(data= subset(tmp, status!="none"), aes(x=meanc, y=lfc, col=status, label=lab), size=point.size, alpha = 0.9)
-  
-    p <- p0 + p1 + theme_bw() +
-      geom_hline(yintercept = 0, linetype = 'dashed', lwd = 0.25) + 
-      ggrepel::geom_text_repel(show.legend = F, size = 2, segment.size = 0.1) +
-      ylab("logFC") + xlab("mean normalized counts") +
-      theme_bw() + my_theme_2 + ggtitle(gtitle) +
-      scale_color_manual(values = pal) +
-      guides(col = guide_legend(nrow = 2))
-  }
-  
-  return(p)
+
 }
 
 build_model_matrix <- function(group, ref, formula_string)
@@ -735,106 +769,6 @@ analyze_relative_expression <- function(genes, dea, time_0 = "T0h", facet_formul
   
   return(list("p" = p, "data" = efc))
 } 
-
-plotExpression <- function(y, gene, experimental_info
-                           , expression.unit = "CPM"
-                           , group.by=NULL
-                           , plot.type="bar"
-                           , pal=NULL
-                           , ord_idx=NULL
-                           , x_text_size=8
-                           , show.points=T
-                           , point.size=0.8
-                           , point.width=0.1
-                           , point.height=NULL
-                           , col.width=0.8
-                           , error.type="sd" # se
-                           , show.names=F
-                           , show.legend=T
-                           , names.rot=0
-                           , gene.text.face="bold") 
-{
-  
-  if(class(y)=="DGEList") {
-    expr <- y[[expression.unit]]
-  } else {
-    expr <- as.matrix(y)
-  }
-  
-  if(length(gene)>1) {
-    toplot <- reshape2::melt(expr[gene,], varnames=c("gene","sample"))
-  }else {
-    toplot <- reshape2::melt(expr[gene,])
-    toplot$sample <- rownames(toplot)
-    toplot$gene <- gene
-  }
-  # browser()
-  if(!is.null(group.by)) {
-    message(" -- averaging over groups: ", group.by)
-    colnames(experimental_info)[grep("^sample$",colnames(experimental_info),ignore.case = T)] <- "sample"
-    toplot <- merge(toplot, experimental_info, by = "sample")
-    
-    toplot$group <- toplot[,group.by] # tmp variable to group by
-    if(error.type=="sd") {
-      toplot <- ddply(toplot, .(gene, group)
-                      , mutate
-                      , av = mean(value)
-                      , sd = sd(value))
-      
-    } else if(error.type=="se") {
-      toplot <- ddply(toplot, .(gene, group)
-                      , mutate
-                      , av = mean(value)
-                      , sd = sd(value)/sqrt(length(value)))
-    }
-    toplot$group <- NULL # rm tmp variable
-    
-    if(!is.null(ord_idx)) toplot[,group.by] <- factor(toplot[,group.by], levels = ord_idx)
-    if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,group.by])))
-    
-    if(plot.type=="bar") {
-      p <- ggplot(unique(toplot[,c(group.by,"av","sd","gene")]), aes_string(x=group.by,y="av", fill=group.by))+ 
-        geom_col(lwd = 0.25, width=col.width, show.legend = show.legend) +
-        geom_errorbar(aes(ymax=av+sd, ymin=av-sd), size=0.2, width=0.3,linetype="dashed", lwd = 0.25, position = position_dodge(width = 0.8)) +
-        facet_wrap(~gene, scales = "free_y", ncol = 4) + theme_bw() + my_theme_2 +
-        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), strip.text = element_text(face = gene.text.face, size = 8)) +
-        scale_fill_manual(values = pal) + ylab(paste0("average ",toupper(expression.unit)))
-      if(show.points) {
-        p <- p + geom_jitter(data=toplot, aes_string(x=group.by,y="value"),width = point.width,height = point.height,size=point.size, show.legend=F) + 
-          ylab(toupper(expression.unit))
-      }
-      if(show.names) {
-        if(names.rot==45) {
-          p <- p + theme(axis.text.x = element_text(size = x_text_size, angle=names.rot, hjust = 1, vjust = 1))
-        } else if(names.rot==90){
-          p <- p + theme(axis.text.x = element_text(size = x_text_size, angle=names.rot, hjust = 1, vjust = .5))
-        }else {
-          p <- p + theme(axis.text.x = element_text(size = x_text_size))
-        }
-      } else {
-        p <- p + theme(axis.text.x = element_blank())
-      }
-    }
-  } else {
-    if(is.null(ord_idx)) {
-      if("group"%in%colnames(y$samples)) {
-        ord_idx <- rownames(y$samples[order(y$samples$group),])
-      } else {
-        ord_idx <- colnames(y)
-      }
-    }
-    toplot$sample <- factor(toplot$sample, levels=ord_idx) 
-    if(is.null(pal)) pal <- ggsci::pal_d3()(length(unique(toplot[,"sample"])))
-    if(plot.type=="bar") {
-      p <- ggplot(toplot, aes(x=sample, y=value, fill=sample))+ geom_col(lwd = 0.25,width=0.9,show.legend = F) +
-        facet_wrap(~gene, scales = "free_y", ncol = 4) + theme_bw() + my_theme_2 +
-        theme(legend.key.size = unit(4,'mm'),axis.title.x = element_blank(), axis.text.x = element_text(size=x_text_size, angle=45, hjust=1,vjust=1), strip.text = element_text(face = "plain", size = 8)) +
-        scale_fill_manual(values = pal) + ylab(toupper(expression.unit))
-    }
-  }
-  
-  return(p)
-}
 
 # DESeq2 ---
 calculateDiffExprDESeq2 <- function(counts
