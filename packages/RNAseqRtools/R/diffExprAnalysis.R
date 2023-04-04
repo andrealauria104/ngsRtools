@@ -246,12 +246,6 @@ saveXLSresEdgeR <- function(res, outfile, name, force=T) {
   
 }
 
-getDEres <- function(x, genes) {
-  # Get DE results for specific genes
-  if(!is.data.frame(x)) x <- x$table
-  x[intersect(genes, rownames(x)),]  
-}
-
 getDEgenes <- function(x, fdrTh=0.1, fcTh=0.5, lcpmTh=NULL) {
   # Get DE genes satisfying thresholds
   message("[+] Get differentially expressed genes, thresholds:")
@@ -503,7 +497,6 @@ analyze_de_contrasts_v2 <- function(y, test_contrasts
   return(de)
 }
 
-
 create_fc_matrix_contrasts <- function(de_contrasts)
 {
   gidx <- lapply(de_contrasts, function(i) i$sig$genes)
@@ -514,127 +507,6 @@ create_fc_matrix_contrasts <- function(de_contrasts)
   rownames(fc) <- gidx
   
   return(fc)
-}
-
-# Wrapper DE analysis
-analyzeDE <- function(s
-                      , fdrTh  = 0.05
-                      , fcTh   = 0.5
-                      , lcpmTh = 0
-                      , multigroup_method = "qlf"
-                      , ...)
-{
-  method <- NA
-  deAnalysis    <- lapply(s, function(x) {
-    if(length(unique(x))>2) {
-      method <<- multigroup_method
-    } else {
-      method <<- "exact"
-    }
-    tryCatch( calculateDiffExpr(m=counts, group = x, method = method, ...)
-              , error = function(e) {
-                message(paste0("[-] Error: ",e, ".\n"))
-                return(NA)
-              }  )
-  } )
-  
-  deAnalysis.Sig <- lapply(deAnalysis, function(x) {
-    tryCatch(getDEgenes(x, fdrTh = fdrTh, fcTh = fcTh, lcpmTh = lcpmTh)
-             , error   = function(e) return(NA))
-  })
-  
-  nDeGenes  <- lapply(deAnalysis.Sig, nrow)
-  
-  
-  if(method == "qlf") {
-    up <- lapply(deAnalysis.Sig, function(x) {
-      tryCatch(getDEgsigned(x, signed=1)
-               , error   = function(e) return(NA))
-    })
-    
-    dw <- lapply(deAnalysis.Sig, function(x) {
-      tryCatch(getDEgsigned(x, signed=(-1))
-               , error   = function(e) return(NA))
-    })
-  } else if(method == "exact"){
-    up <- lapply(deAnalysis.Sig, function(x) {
-      tryCatch(x[sign(x[,'logFC'])==1,]
-               , error   = function(e) return(NA))
-    })
-    
-    dw <- lapply(deAnalysis.Sig, function(x) {
-      tryCatch(x[sign(x[,'logFC'])==(-1),]
-               , error   = function(e) return(NA))
-    })
-  }
-  
-  
-  message("[+] Plotting ...")
-  
-  hm <- lapply(names(s), function(i) {
-    tryCatch({deg <- rownames(deAnalysis.Sig[[i]])
-    gidx <- intersect(rownames(tpm), deg)
-    
-    set.seed(s33d)
-    m <- tpm[gidx, names(s[[i]])]
-    h <- get_heatmap3(m
-                      , show_row_names = F
-                      , clustering_distance_rows = "euclidean"
-                      , clustering_distance_columns = "euclidean"
-                      , clustering_method_rows = "complete"
-                      , clustering_method_columns = "complete"
-                      , show_row_dend = F
-                      , retHm = T)
-    return(h)}, error   = function(e) return(NA))
-  })
-  names(hm) <- names(s)
-  
-  vp <- lapply(deAnalysis, function(i) plotRNAVolcanos(de = i$table, lfcTh = fcTh, pvTh = fdrTh))
-  
-  return(list(    "deAnalysis"     = deAnalysis
-                  , "deAnalysis.Sig" = deAnalysis.Sig
-                  , "nDeGenes"       = nDeGenes
-                  , "up"             = up
-                  , "dw"             = dw
-                  , "heatmap"        = hm
-                  , "vp"             = vp))
-}
-
-saveDE <- function(dea, FIGDIR, RESDIR)
-{
-  message("[+] Saving plots, directory: ", FIGDIR)
-  message(" -- volcanos ")
-  lapply(names(dea$vp), function(i) {
-    outfig <- paste0(FIGDIR, "/vp.analysis_",i
-                     ,".fcTh_",fcTh
-                     ,".fdrTh_",fdrTh
-                     ,".pdf")
-    pdf(file = outfig, paper = 'a4', width = unit(6,'cm'), height = unit(6,'cm'))
-    print(dea$vp[[i]])
-    dev.off()
-  }
-  )
-  message(" -- heatmaps ")
-  lapply(names(dea$heatmap), function(i) {
-    outfig <- paste0(FIGDIR, "/hm.analysis_",i
-                     ,".fcTh_",fcTh
-                     ,".fdrTh_",fdrTh
-                     ,".pdf")
-    set.seed(s33d)
-    pdf(file=outfig, paper = 'a4', width = unit(3,'cm'), height = unit(6,'cm'))
-    set.seed(s33d); print(dea$heatmap[[i]])
-    dev.off()
-  }
-  )
-  
-  message(" -- tables ")
-  if(!exists("analysis")) analysis <- "analysis"
-  outfile <- paste0(RESDIR,"/DEA.edgeR.",analysis
-                    ,".fcTh_",fcTh
-                    ,".fdrTh_",fdrTh
-                    ,".xlsx")
-  
-  saveXLSresEdgeR(dea$deAnalysis.Sig, outfile = outfile)
 }
 
 compute_fold_change <- function(x, y, pseudocount, logscale = F) 
