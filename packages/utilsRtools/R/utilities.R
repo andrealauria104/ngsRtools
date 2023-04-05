@@ -1,6 +1,4 @@
 # General Utilities 
-library(xlsx)
-
 # Get OS info ====
 get_os <- function(){
   sysinf <- Sys.info()
@@ -195,23 +193,27 @@ mbind <- function(...){
 }
 
 # Read Excel spreadsheets ----
-read_sheetfile <- function(sheetfile, sstart = 1)
+read_sheetfile <- function(sheetfile, sstart=1)
 {
   # Read Excel workbook
   rsheetfile <- tryCatch(
-    { 
-      wb      <- xlsx::loadWorkbook(sheetfile) 
-      sheets  <- names(xlsx::getSheets(wb)) # retrive sheet names
-      rsheets <- lapply(sheets, function(sheetname) 
-      {
-        y <- suppressWarnings(xlsx::read.xlsx(sheetfile, sheetName = sheetname, startRow = sstart, stringsAsFactors = F))
-        naidx <- which(apply(y, 1, function(x) all(is.na(x))))
-        if(length(naidx)>0) y <- y[-naidx,]
+    {
+      wb      <- openxlsx::loadWorkbook(sheetfile)
+      sheets  <- names(wb) # retrive sheet names
+      rsheets <- lapply(sheets, function(sheetname)
+        {
+        y <- openxlsx::read.xlsx(sheetfile
+          , sheet = sheetname
+          , startRow = sstart
+          , skipEmptyRows = T
+          , skipEmptyCols = T
+          , colNames = F)
+        if(length(y[is.na(y)])!=0) y[is.na(y)] <- ""
         return(y)
       })
       names(rsheets) <- gsub("[[:space:]]","",sheets)
       return(rsheets)
-    }, 
+    },
     error = function(e) {
       message(e)
       return(NA)

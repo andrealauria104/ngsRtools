@@ -246,6 +246,54 @@ saveXLSresEdgeR <- function(res, outfile, name, force=T) {
   
 }
 
+saveXLSresEdgeR2 <- function(res, outfile
+                             , name = "edgeR"
+                             , force = TRUE
+                             , keepNA = TRUE)
+{
+  message("[+] Saving results to file: ", outfile)
+  if(is.list(res) & !is.data.frame(res)) {
+    
+    if(file.exists(outfile) & force==F) {
+      warning(" -- appending to existing file.")
+      wb <- openxlsx::loadWorkbook(outfile)
+    } else {
+      wb <- openxlsx::createWorkbook()
+    }
+    
+    for(i in names(res)) {
+      openxlsx::addWorksheet(wb = wb, sheetName = i)
+      openxlsx::writeData(wb = wb
+                          , sheet = i
+                          , x = res[[i]]
+                          , keepNA = keepNA
+                          , colNames = TRUE
+                          , rowNames = FALSE)
+    }
+    
+    openxlsx::saveWorkbook(wb = wb
+                           , file = outfile
+                           , overwrite = TRUE)
+    
+  } else {
+    
+    if(file.exists(outfile) & force==F) {
+      overwrite <- T
+      warning(" -- appending to existing file.")
+    } else {
+      overwrite <- F
+    }
+    openxlsx::write.xlsx(x = res
+                         , file = outfile
+                         , overwrite = TRUE
+                         , keepNA = keepNA
+                         , sheetName = name
+                         , colNames = TRUE
+                         , rowNames = FALSE)
+    
+  }
+}
+
 getDEgenes <- function(x, fdrTh=0.1, fcTh=0.5, lcpmTh=NULL) {
   # Get DE genes satisfying thresholds
   message("[+] Get differentially expressed genes, thresholds:")

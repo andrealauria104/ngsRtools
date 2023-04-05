@@ -12,7 +12,7 @@ Description: A Collection of Tools for Next-Generation Sequencing Data Analysis,
 Encoding: UTF-8
 LazyData: true
 Depends: 
-    xlsx,
+    openxlsx,
     ggplot2,
     ggrepel,
     reshape2,
